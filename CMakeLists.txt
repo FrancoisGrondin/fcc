@@ -38,3 +38,10 @@ add_executable(tdoa
 target_link_libraries(tdoa
     fccphat
 )
+
+add_executable(speed
+  demo/speed.c
+)
+target_link_libraries(speed
+    fccphat
+)

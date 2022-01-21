@@ -71,6 +71,17 @@
 
 	} phat_obj;
 
+	typedef struct scmphat_obj {
+
+		unsigned int channels_count;
+		unsigned int frame_size;
+		float alpha;
+		char method;
+
+		float ** cross_spectrum;
+
+	} scmphat_obj;
+
 	typedef struct gcc_obj {
 
 		unsigned int channels_count;
@@ -122,17 +133,11 @@
 
 	int stft_call(stft_obj * obj, const hops_obj * hops, freqs_obj * freqs);
 
-	scm_obj * scm_construct(const unsigned int channels_count, const unsigned int frame_size, const float alpha);
+	scmphat_obj * scmphat_construct(const unsigned int channels_count, const unsigned int frame_size, const float alpha);
 
-	void scm_destroy(scm_obj * obj);
+	void scmphat_destroy(scmphat_obj * obj);
 
-	int scm_call(scm_obj * obj, const freqs_obj * freqs, covs_obj * covs);
-
-	phat_obj * phat_construct(const unsigned int channels_count, const unsigned int frame_size);
-
-	void phat_destroy(phat_obj * obj);
-
-	int phat_call(phat_obj * obj, covs_obj * covs, covs_obj * covs_normalized);
+	int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs);
 
 	gcc_obj * gcc_construct(const unsigned int channels_count, const unsigned int frame_size, const unsigned int tau_max, const unsigned int interpolation_rate);
 

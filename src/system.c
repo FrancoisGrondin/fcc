@@ -134,154 +134,193 @@ int stft_call(stft_obj * obj, const hops_obj * hops, freqs_obj * freqs) {
 
 }
 
-scm_obj * scm_construct(const unsigned int channels_count, const unsigned int frame_size, const float alpha) {
+scmphat_obj * scmphat_construct(const unsigned int channels_count, const unsigned int frame_size, const float alpha) {
 
-	scm_obj * obj;
+	scmphat_obj * obj;
 	unsigned int channel_index1;
 	unsigned int channel_index2;
 	unsigned int pair_index;
+	unsigned int channel_index;
 
-	obj = (scm_obj *) malloc(sizeof(scm_obj));
+	obj = (scmphat_obj *) malloc(sizeof(scmphat_obj));
 
 	obj->channels_count = channels_count;
 	obj->frame_size = frame_size;
 	obj->alpha = alpha;
 
-	pair_index = 0;
-	obj->cross_spectrum = (float **) malloc(sizeof(float *) * (channels_count * (channels_count-1) / 2));
-	for (channel_index1 = 0; channel_index1 < channels_count; channel_index1++) {
-		for (channel_index2 = (channel_index1+1); channel_index2 < channels_count; channel_index2++) {
-			obj->cross_spectrum[pair_index] = (float *) malloc(sizeof(float) * (frame_size/2+1) * 2);
-			memset((void *) obj->cross_spectrum[pair_index], 0x00, sizeof(float) * (frame_size/2+1) * 2);
-			pair_index++;
+	obj->method = 'p';
+	if (alpha == 1.0f) {
+		if (channels_count > 2) {
+			obj->method = 'c';
 		}
 	}
 
+	if (obj->method == 'p') {
+
+		pair_index = 0;
+		obj->cross_spectrum = (float **) malloc(sizeof(float *) * (channels_count * (channels_count-1) / 2));
+		for (channel_index1 = 0; channel_index1 < channels_count; channel_index1++) {
+			for (channel_index2 = (channel_index1+1); channel_index2 < channels_count; channel_index2++) {
+				obj->cross_spectrum[pair_index] = (float *) malloc(sizeof(float) * (frame_size/2+1) * 2);
+				memset((void *) obj->cross_spectrum[pair_index], 0x00, sizeof(float) * (frame_size/2+1) * 2);
+				pair_index++;
+			}
+		}
+
+	}
+	if (obj->method == 'c') {
+
+		obj->cross_spectrum = (float **) malloc(sizeof(float *) * channels_count);
+		for (channel_index = 0; channel_index < channels_count; channel_index++) {
+			obj->cross_spectrum[channel_index] = (float *) malloc(sizeof(float) * (frame_size/2+1) * 2);
+			memset((void *) obj->cross_spectrum[channel_index], 0x00, sizeof(float) * (frame_size/2+1) * 2);
+		}
+
+	}
 
 	return obj;
 
 }
 
-void scm_destroy(scm_obj * obj) {
+void scmphat_destroy(scmphat_obj * obj) {
 
 	unsigned int channel_index1;
 	unsigned int channel_index2;
 	unsigned int pair_index;
+	unsigned int channel_index;
 
-	pair_index = 0;
-	for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
-		for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
-			free((void *) obj->cross_spectrum[pair_index]);
-			pair_index++;
+	if (obj->method == 'p') {
+
+		pair_index = 0;
+		for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
+			for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
+				free((void *) obj->cross_spectrum[pair_index]);
+				pair_index++;
+			}
 		}
+		free((void *) obj->cross_spectrum);
+
+	}
+	if (obj->method == 'c') {
+
+		for (channel_index = 0; channel_index < obj->channels_count; channel_index++) {
+			free((void *) obj->cross_spectrum[channel_index]);
+		}
+		free((void *) obj->cross_spectrum);
+
 	}
 
 	free((void *) obj);
 
 }
 
-int scm_call(scm_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
-	
+int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
+
 	unsigned int channel_index1;
 	unsigned int channel_index2;
 	unsigned int bin_index;
 	unsigned int pair_index;
+	unsigned int channel_index;
 
 	float dest_real;
 	float dest_imag;
+	float dest_magn;
 	float src1_real;
 	float src1_imag;
 	float src2_real;
 	float src2_imag;
+	float src_real;
+	float src_imag;
+	float src_magn;
 
-	pair_index = 0;
+	if (obj->method == 'p') {
 
-	for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
+		pair_index = 0;
 
-		for (channel_index2 = (channel_index1 + 1); channel_index2 < obj->channels_count; channel_index2++) {
+		for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
 
-			for (bin_index = 0; bin_index < (obj->frame_size/2+1); bin_index++) {
+			for (channel_index2 = (channel_index1 + 1); channel_index2 < obj->channels_count; channel_index2++) {
 
-				dest_real = obj->cross_spectrum[pair_index][bin_index*2+0];
-				dest_imag = obj->cross_spectrum[pair_index][bin_index*2+1];
+				for (bin_index = 0; bin_index < (obj->frame_size/2+1); bin_index++) {
 
-				src1_real = freqs->samples[channel_index1][bin_index*2+0];
-				src1_imag = freqs->samples[channel_index1][bin_index*2+1];
-				src2_real = freqs->samples[channel_index2][bin_index*2+0];
-				src2_imag = freqs->samples[channel_index2][bin_index*2+1];				
+					dest_real = obj->cross_spectrum[pair_index][bin_index*2+0];
+					dest_imag = obj->cross_spectrum[pair_index][bin_index*2+1];
 
-				dest_real *= (1.0 - obj->alpha);
-				dest_imag *= (1.0 - obj->alpha);
+					src1_real = freqs->samples[channel_index1][bin_index*2+0];
+					src1_imag = freqs->samples[channel_index1][bin_index*2+1];
+					src2_real = freqs->samples[channel_index2][bin_index*2+0];
+					src2_imag = freqs->samples[channel_index2][bin_index*2+1];				
 
-				dest_real += obj->alpha * (src1_real * src2_real + src1_imag * src2_imag);
-				dest_imag += obj->alpha * (src1_imag * src2_real - src1_real * src2_imag);
+					dest_real *= (1.0 - obj->alpha);
+					dest_imag *= (1.0 - obj->alpha);
 
-				obj->cross_spectrum[pair_index][bin_index*2+0] = dest_real;
-				obj->cross_spectrum[pair_index][bin_index*2+1] = dest_imag;
+					dest_real += obj->alpha * (src1_real * src2_real + src1_imag * src2_imag);
+					dest_imag += obj->alpha * (src1_imag * src2_real - src1_real * src2_imag);
 
-				covs->samples[pair_index][bin_index*2+0] = dest_real;
-				covs->samples[pair_index][bin_index*2+1] = dest_imag;
+					obj->cross_spectrum[pair_index][bin_index*2+0] = dest_real;
+					obj->cross_spectrum[pair_index][bin_index*2+1] = dest_imag;
+
+					dest_magn = sqrtf(dest_real * dest_real + dest_imag * dest_imag);
+
+					dest_real /= (dest_magn + 1e-10);
+					dest_imag /= (dest_magn + 1e-10);
+
+					covs->samples[pair_index][bin_index*2+0] = dest_real;
+					covs->samples[pair_index][bin_index*2+1] = dest_imag;
+
+				}
+
+				pair_index++;
 
 			}
-
-
-			pair_index++;
 
 		}
 
 	}
+	if (obj->method == 'c') {
 
-	return 0;
-
-}
-
-phat_obj * phat_construct(const unsigned int channels_count, const unsigned int frame_size) {
-
-	phat_obj * obj;
-
-	obj = (phat_obj *) malloc(sizeof(phat_obj));
-
-	obj->channels_count = channels_count;
-	obj->frame_size = frame_size;
-
-	return obj;
-
-}
-
-void phat_destroy(phat_obj * obj) {
-
-	free((void *) obj);
-
-}
-
-int phat_call(phat_obj * obj, covs_obj * covs, covs_obj * covs_normalized) {
-
-	unsigned int channel_index1;
-	unsigned int channel_index2;
-	unsigned int pair_index;
-	unsigned int bin_index;
-
-	float cov_real;
-	float cov_imag;
-	float cov_magn;
-
-	pair_index = 0;
-
-	for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
-
-		for (channel_index2 = (channel_index1 + 1); channel_index2 < obj->channels_count; channel_index2++) {
+		for (channel_index = 0; channel_index < obj->channels_count; channel_index++) {
 
 			for (bin_index = 0; bin_index < (obj->frame_size/2+1); bin_index++) {
 
-				cov_real = covs->samples[pair_index][bin_index*2+0];
-				cov_imag = covs->samples[pair_index][bin_index*2+1];
-				cov_magn = sqrtf(cov_real * cov_real + cov_imag * cov_imag);
-				covs_normalized->samples[pair_index][bin_index*2+0] = cov_real / (cov_magn + 1e-10);
-				covs_normalized->samples[pair_index][bin_index*2+1] = cov_imag / (cov_magn + 1e-10);
+				src_real = freqs->samples[channel_index][bin_index*2+0];
+				src_imag = freqs->samples[channel_index][bin_index*2+1];
+				src_magn = sqrtf(src_real * src_real + src_imag * src_imag);
+
+				src_real /= (src_magn + 1e-10);
+				src_imag /= (src_imag + 1e-10);
+
+				obj->cross_spectrum[channel_index][bin_index*2+0] = src_real;
+				obj->cross_spectrum[channel_index][bin_index*2+1] = src_imag;
 
 			}
 
-			pair_index++;
+		}
+
+		pair_index = 0;
+
+		for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
+
+			for (channel_index2 = (channel_index1 + 1); channel_index2 < obj->channels_count; channel_index2++) {
+
+				for (bin_index = 0; bin_index < (obj->frame_size/2+1); bin_index++) {
+
+					src1_real = obj->cross_spectrum[channel_index1][bin_index*2+0];
+					src1_imag = obj->cross_spectrum[channel_index1][bin_index*2+1];
+					src2_real = obj->cross_spectrum[channel_index2][bin_index*2+0];
+					src2_imag = obj->cross_spectrum[channel_index2][bin_index*2+1];
+
+					dest_real = src1_real * src2_imag - src1_imag * src2_real;
+					dest_imag = src1_imag * src2_real + src1_real * src2_imag;
+
+					covs->samples[pair_index][bin_index*2+0] = dest_real;
+					covs->samples[pair_index][bin_index*2+1] = dest_imag;
+
+				}
+
+				pair_index++;
+
+			}
 
 		}
 
@@ -524,14 +563,14 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 			}
 
 			y_max = 0.0;
-			l_max = 0;
+			l_max = 1;
 
 			for (l = 1; l < obj->L-1; l++) {
 				if (y_real[l] > y_max) {
 					y_max = y_real[l];
 					l_max = l;
 				}
-			}
+			}	
 
 			corrs->taus_prev[pair_index] = (float) ((l_max - 1) - (2 * obj->tau_max)) / 2.0;
 			corrs->ys_prev[pair_index] = y_real[l_max - 1];

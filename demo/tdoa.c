@@ -9,12 +9,10 @@ int main(int argc, char * argv[]) {
     int opt;
     char method;
     char filename[1024];
-    unsigned int repeat;
 
     wav_obj * wav;
     stft_obj * stft;
-    scm_obj * scm;
-    phat_obj * phat;
+    scmphat_obj * scmphat;
     gcc_obj * gcc;
     fcc_obj * fcc;
     quadinterp_obj * quadinterp;
@@ -22,24 +20,19 @@ int main(int argc, char * argv[]) {
     hops_obj * hops;
     freqs_obj * freqs;
     covs_obj * covs;
-    covs_obj * covs_normalized;
     corrs_obj * corrs;
     taus_obj * taus;
 
     const unsigned int hop_size = 256;
     const unsigned int frame_size = 512;
-    const unsigned int channels_count = 2;
     const unsigned int sample_rate = 16000;
     const unsigned int tau_max = 8;
     const unsigned int interpolation_rate = 2;
     const float alpha = 1.0;
 
-    unsigned int r;
-
     method = 0x00;
-    repeat = 1;
 
-    while((opt = getopt(argc, argv, "i:m:r:")) != -1) 
+    while((opt = getopt(argc, argv, "i:m:")) != -1) 
     { 
         switch(opt) 
         { 
@@ -53,11 +46,6 @@ int main(int argc, char * argv[]) {
 
                 if (strcmp(optarg, "gcc") == 0) { method = 'g'; }
                 if (strcmp(optarg, "fcc") == 0) { method = 'f'; }
-                break;
-
-            case 'r':
-
-                repeat = atoi(optarg);
                 break;
 
         } 
@@ -77,49 +65,40 @@ int main(int argc, char * argv[]) {
 
     if (wav->sample_rate != sample_rate) {
         printf("Invalid sample rate (was expecting %u, got %u).\n", sample_rate, wav->sample_rate);
-    }
-    if (wav->num_channels != channels_count) {
-        printf("Invalid number of channels (was expecting %u, got %u).\n", channels_count, wav->num_channels);
+        exit(-1);
     }
 
-    stft = stft_construct(channels_count, frame_size, hop_size);
-    scm = scm_construct(channels_count, frame_size, alpha);
-    phat = phat_construct(channels_count, frame_size);
-    gcc = gcc_construct(channels_count, frame_size, tau_max, interpolation_rate);
-    fcc = fcc_construct(channels_count, frame_size, tau_max);
-    quadinterp = quadinterp_construct(channels_count);
 
-    hops = hops_construct(channels_count, hop_size);
-    freqs = freqs_construct(channels_count, frame_size);
-    covs = covs_construct(channels_count, frame_size);
-    covs_normalized = covs_construct(channels_count, frame_size);
-    corrs = corrs_construct(channels_count);
-    taus = taus_construct(channels_count);
+    stft = stft_construct(wav->num_channels, frame_size, hop_size);
+    scmphat = scmphat_construct(wav->num_channels, frame_size, alpha);
+    gcc = gcc_construct(wav->num_channels, frame_size, tau_max, interpolation_rate);
+    fcc = fcc_construct(wav->num_channels, frame_size, tau_max);
+    quadinterp = quadinterp_construct(wav->num_channels);
+
+    hops = hops_construct(wav->num_channels, hop_size);
+    freqs = freqs_construct(wav->num_channels, frame_size);
+    covs = covs_construct(wav->num_channels, frame_size);
+    corrs = corrs_construct(wav->num_channels);
+    taus = taus_construct(wav->num_channels);
 
     while (wav_read(wav, hops) == 0) {
 
         stft_call(stft, hops, freqs);
-        scm_call(scm, freqs, covs);
-        phat_call(phat, covs, covs_normalized);
+        scmphat_call(scmphat, freqs, covs);
 
-        for (r = 0; r < repeat; r++) {
-
-            if (method == 'g') {
-                gcc_call(gcc, covs_normalized, corrs);
-            }
-            if (method == 'f') {
-                fcc_call(fcc, covs_normalized, corrs);
-            }
-            
+        if (method == 'g') {
+            gcc_call(gcc, covs, corrs);
         }
-
+        if (method == 'f') {
+            fcc_call(fcc, covs, corrs);
+        }
+        
         quadinterp_call(quadinterp, corrs, taus);
 
     }
 
     stft_destroy(stft);
-    scm_destroy(scm);
-    phat_destroy(phat);
+    scmphat_destroy(scmphat);
     gcc_destroy(gcc);
     fcc_destroy(fcc);
     quadinterp_destroy(quadinterp);
@@ -127,7 +106,6 @@ int main(int argc, char * argv[]) {
     hops_destroy(hops);
     freqs_destroy(freqs);
     covs_destroy(covs);
-    covs_destroy(covs_normalized);
     corrs_destroy(corrs);
     taus_destroy(taus);
 

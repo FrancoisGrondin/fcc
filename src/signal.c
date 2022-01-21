@@ -13,6 +13,7 @@ hops_obj * hops_construct(const unsigned int channels_count, const unsigned int 
 	obj->samples = (float **) malloc(sizeof(float *) * channels_count);
 	for (channel_index = 0; channel_index < channels_count; channel_index++) {
 		obj->samples[channel_index] = (float *) malloc(sizeof(float) * hop_size);
+		memset(obj->samples[channel_index], 0x00, sizeof(float) * hop_size);
 	}
 
 	return obj;
@@ -45,6 +46,7 @@ freqs_obj * freqs_construct(const unsigned int channels_count, const unsigned in
 	obj->samples = (float **) malloc(sizeof(float *) * channels_count);
 	for (channel_index = 0; channel_index < channels_count; channel_index++) {
 		obj->samples[channel_index] = (float *) malloc(sizeof(float) * (frame_size/2+1) * 2);
+		memset(obj->samples[channel_index], 0x00, sizeof(float) * (frame_size/2+1) * 2);
 	}
 
 	return obj;
@@ -81,6 +83,7 @@ covs_obj * covs_construct(const unsigned int channels_count, const unsigned int 
 	for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
 		for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
 			obj->samples[pair_index] = (float *) malloc(sizeof(float) * (frame_size/2+1) * 2);
+			memset(obj->samples[pair_index], 0x00, sizeof(float) * (frame_size/2+1) * 2);
 			pair_index++;
 		}
 	}
@@ -117,11 +120,17 @@ corrs_obj * corrs_construct(const unsigned int channels_count) {
 	obj->channels_count = channels_count;
 
 	obj->taus_prev = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->taus_prev, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);
 	obj->ys_prev = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->ys_prev, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);
 	obj->taus_max = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->taus_max, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);
 	obj->ys_max = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->ys_max, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);	
 	obj->taus_next = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->taus_next, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);
 	obj->ys_next = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->ys_next, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);	
 
 	return obj;
 
@@ -149,7 +158,9 @@ taus_obj * taus_construct(const unsigned int channels_count) {
 	obj->channels_count = channels_count;
 
 	obj->taus = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->taus, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);
 	obj->ys = (float *) malloc(sizeof(float) * channels_count * (channels_count-1) / 2);
+	memset(obj->ys, 0x00, sizeof(float) * channels_count * (channels_count-1) / 2);
 
 	return obj;
 
