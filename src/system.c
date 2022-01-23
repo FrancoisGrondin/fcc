@@ -525,8 +525,8 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
 			}
 
-			cov_real1 = covs->samples[pair_index][2*obj->frame_size/2+0];
-			cov_imag1 = covs->samples[pair_index][2*obj->frame_size/2+1];
+			cov_real1 = covs->samples[pair_index][2*obj->frame_size/4+0];
+			cov_imag1 = covs->samples[pair_index][2*obj->frame_size/4+1];
 
 			x_add_real[obj->frame_size/4] = cov_real1;
 			x_add_imag[obj->frame_size/4] = cov_imag1;
@@ -547,11 +547,10 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 				}
 				else {
 					for (n = 0; n < obj->frame_size/4+1; n++) {
-						z_real[k] += x_sub_real[n] * obj->bases[k][n];
-						z_imag[k] += x_sub_imag[n] * obj->bases[k][n];
+						z_real[k] += -x_sub_imag[n] * obj->bases[k][n];
+						z_imag[k] += x_sub_real[n] * obj->bases[k][n];
 					}					
 				}	
-
 
 			}
 

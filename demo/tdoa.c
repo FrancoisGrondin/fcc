@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
 
 int main(int argc, char * argv[]) {
 
@@ -30,7 +31,7 @@ int main(int argc, char * argv[]) {
     const unsigned int sample_rate = 16000;
     const unsigned int tau_max = 8;
     const unsigned int interpolation_rate = 2;
-    const float alpha = 1.0;
+    const float alpha = 0.1;
 
     method = 0x00;
 
@@ -100,7 +101,7 @@ int main(int argc, char * argv[]) {
         if (method == 'f') {
             fcc_call(fcc, covs, corrs);
         }
-        
+
         quadinterp_call(quadinterp, corrs, taus);
         csv_write(csv, taus);
 
