@@ -3,6 +3,7 @@
 
 	#include <stdlib.h>
 	#include <string.h>
+	#include <stdio.h>
 
 	typedef struct hops_obj {
 
@@ -56,20 +57,30 @@
 
 	void hops_destroy(hops_obj * obj);
 
+	void hops_printf(const hops_obj * obj);
+
 	freqs_obj * freqs_construct(const unsigned int channels_count, const unsigned int frame_size);
 
 	void freqs_destroy(freqs_obj * obj);
+
+	void freqs_printf(const freqs_obj * obj);
 
 	covs_obj * covs_construct(const unsigned int channels_count, const unsigned int frame_size);
 
 	void covs_destroy(covs_obj * obj);
 
+	void covs_printf(const covs_obj * obj);
+
 	corrs_obj * corrs_construct(const unsigned int channels_count);
 
 	void corrs_destroy(corrs_obj * obj);
 
+	void corrs_printf(const corrs_obj * obj);
+
 	taus_obj * taus_construct(const unsigned int channels_count);
 
 	void taus_destroy(taus_obj * obj);
+
+	void taus_printf(const taus_obj * obj);
 
 #endif

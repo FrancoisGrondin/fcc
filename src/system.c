@@ -310,8 +310,8 @@ int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
 					src2_real = obj->cross_spectrum[channel_index2][bin_index*2+0];
 					src2_imag = obj->cross_spectrum[channel_index2][bin_index*2+1];
 
-					dest_real = src1_real * src2_imag - src1_imag * src2_real;
-					dest_imag = src1_imag * src2_real + src1_real * src2_imag;
+					dest_real = src1_real * src2_real + src1_imag * src2_imag;
+					dest_imag = src1_imag * src2_real - src1_real * src2_imag;
 
 					covs->samples[pair_index][bin_index*2+0] = dest_real;
 					covs->samples[pair_index][bin_index*2+1] = dest_imag;
@@ -572,11 +572,11 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 				}
 			}	
 
-			corrs->taus_prev[pair_index] = (float) ((l_max - 1) - (2 * obj->tau_max)) / 2.0;
+			corrs->taus_prev[pair_index] = ((float) (l_max - 1) - (float) (2 * obj->tau_max)) / 2.0;
 			corrs->ys_prev[pair_index] = y_real[l_max - 1];
-			corrs->taus_max[pair_index] = (float) (l_max - (2 * obj->tau_max)) / 2.0;
+			corrs->taus_max[pair_index] = ((float) l_max - (float) (2 * obj->tau_max)) / 2.0;
 			corrs->ys_max[pair_index] = y_real[l_max];
-			corrs->taus_next[pair_index] = (float) ((l_max + 1) - (2* obj->tau_max)) / 2.0;
+			corrs->taus_next[pair_index] = ((float) (l_max + 1) - (float) (2* obj->tau_max)) / 2.0;
 			corrs->ys_next[pair_index] = y_real[l_max + 1];
 
 			pair_index++;
@@ -639,6 +639,86 @@ int quadinterp_call(quadinterp_obj * obj, const corrs_obj * corrs, taus_obj * ta
 		}
 
 	}
+
+	return 0;
+
+}
+
+csv_obj * csv_construct(const char * file_name, const unsigned int channels_count) {
+
+	csv_obj * obj;
+	unsigned int channel_index1;
+	unsigned int channel_index2;
+	unsigned int pair_index;
+
+	obj = (csv_obj *) malloc(sizeof(csv_obj));
+
+	obj->file_pointer = fopen(file_name, "w");
+	obj->frame_index = 0;
+	obj->channels_count = channels_count;
+
+	fprintf(obj->file_pointer, "frame_index, ");
+
+	pair_index = 0;
+
+	for (channel_index1 = 0; channel_index1 < channels_count; channel_index1++) {
+
+		for (channel_index2 = (channel_index1 + 1); channel_index2 < channels_count; channel_index2++) {
+
+			pair_index++;
+			fprintf(obj->file_pointer, "tau%03u", pair_index);
+
+			if (pair_index != channels_count * (channels_count-1) / 2) {
+				fprintf(obj->file_pointer, ", ");
+			}
+
+		}
+
+	}
+	
+	fprintf(obj->file_pointer, "\n");
+
+	return obj;
+
+}
+
+void csv_destroy(csv_obj * obj) {
+
+	fclose(obj->file_pointer);
+
+	free((void *) obj);
+
+}
+
+int csv_write(csv_obj * obj, taus_obj * taus) {
+
+	unsigned int channel_index1;
+	unsigned int channel_index2;
+	unsigned int pair_index;
+
+	obj->frame_index++;
+
+	fprintf(obj->file_pointer, "%u, ", obj->frame_index);
+
+	pair_index = 0;
+
+	for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
+
+		for (channel_index2 = (channel_index1 + 1); channel_index2 < obj->channels_count; channel_index2++) {
+
+			fprintf(obj->file_pointer, "%+1.4f", taus->taus[pair_index]);
+
+			pair_index++;
+
+			if (pair_index != obj->channels_count * (obj->channels_count-1) / 2) {
+				fprintf(obj->file_pointer, ", ");
+			}			
+
+		}
+
+	}
+
+	fprintf(obj->file_pointer, "\n");
 
 	return 0;
 

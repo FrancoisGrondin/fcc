@@ -8,7 +8,8 @@ int main(int argc, char * argv[]) {
 
     int opt;
     char method;
-    char filename[1024];
+    char wav_filename[1024];
+    char csv_filename[1024];
 
     wav_obj * wav;
     stft_obj * stft;
@@ -16,6 +17,7 @@ int main(int argc, char * argv[]) {
     gcc_obj * gcc;
     fcc_obj * fcc;
     quadinterp_obj * quadinterp;
+    csv_obj * csv;
 
     hops_obj * hops;
     freqs_obj * freqs;
@@ -32,20 +34,25 @@ int main(int argc, char * argv[]) {
 
     method = 0x00;
 
-    while((opt = getopt(argc, argv, "i:m:")) != -1) 
+    while((opt = getopt(argc, argv, "i:m:o:")) != -1) 
     { 
         switch(opt) 
         { 
             
             case 'i':
 
-                strcpy(filename, optarg);
+                strcpy(wav_filename, optarg);
                 break;
 
             case 'm':
 
                 if (strcmp(optarg, "gcc") == 0) { method = 'g'; }
                 if (strcmp(optarg, "fcc") == 0) { method = 'f'; }
+                break;
+
+            case 'o':
+
+                strcpy(csv_filename, optarg);
                 break;
 
         } 
@@ -56,12 +63,12 @@ int main(int argc, char * argv[]) {
         exit(-1);        
     }
 
-    if( access( filename, F_OK ) != 0 ) {
-        printf("File %s does not exists\n", filename);
+    if( access(wav_filename, F_OK) != 0 ) {
+        printf("File %s does not exists\n", wav_filename);
         exit(-1);
     }
 
-    wav = wav_construct(filename, hop_size);
+    wav = wav_construct(wav_filename, hop_size);
 
     if (wav->sample_rate != sample_rate) {
         printf("Invalid sample rate (was expecting %u, got %u).\n", sample_rate, wav->sample_rate);
@@ -74,6 +81,7 @@ int main(int argc, char * argv[]) {
     gcc = gcc_construct(wav->num_channels, frame_size, tau_max, interpolation_rate);
     fcc = fcc_construct(wav->num_channels, frame_size, tau_max);
     quadinterp = quadinterp_construct(wav->num_channels);
+    csv = csv_construct(csv_filename, wav->num_channels);
 
     hops = hops_construct(wav->num_channels, hop_size);
     freqs = freqs_construct(wav->num_channels, frame_size);
@@ -94,6 +102,7 @@ int main(int argc, char * argv[]) {
         }
         
         quadinterp_call(quadinterp, corrs, taus);
+        csv_write(csv, taus);
 
     }
 
@@ -102,6 +111,7 @@ int main(int argc, char * argv[]) {
     gcc_destroy(gcc);
     fcc_destroy(fcc);
     quadinterp_destroy(quadinterp);
+    csv_destroy(csv);
 
     hops_destroy(hops);
     freqs_destroy(freqs);

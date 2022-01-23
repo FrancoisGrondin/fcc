@@ -33,6 +33,24 @@ void hops_destroy(hops_obj * obj) {
 
 }
 
+void hops_printf(const hops_obj * obj) {
+
+	unsigned int channel_index;
+	unsigned int sample_index;
+
+	for (channel_index = 0; channel_index < obj->channels_count; channel_index++) {
+		
+		for (sample_index = 0; sample_index < obj->hop_size; sample_index++){
+
+			printf("[%02u]-(%03u): %1.3f\n", channel_index, sample_index, obj->samples[channel_index][sample_index]);
+
+		}
+
+	}
+
+}
+
+
 freqs_obj * freqs_construct(const unsigned int channels_count, const unsigned int frame_size) {
 
 	freqs_obj * obj;
@@ -65,6 +83,24 @@ void freqs_destroy(freqs_obj * obj) {
 	free((void *) obj);
 
 }
+
+void freqs_printf(const freqs_obj * obj) {
+
+	unsigned int channel_index;
+	unsigned int bin_index;
+
+	for (channel_index = 0; channel_index < obj->channels_count; channel_index++) {
+		
+		for (bin_index = 0; bin_index < obj->frame_size/2+1; bin_index++){
+
+			printf("[%02u]-(%03u): (%+1.3f , %+1.3f)\n", channel_index, bin_index, obj->samples[channel_index][bin_index*2+0], obj->samples[channel_index][bin_index*2+1]);
+
+		}
+
+	}
+
+}
+
 
 covs_obj * covs_construct(const unsigned int channels_count, const unsigned int frame_size) {
 
@@ -111,6 +147,23 @@ void covs_destroy(covs_obj * obj) {
 
 }
 
+void covs_printf(const covs_obj * obj) {
+
+	unsigned int pair_index;
+	unsigned int bin_index;
+
+	for (pair_index = 0; pair_index < (obj->channels_count * (obj->channels_count-1)/2); pair_index++) {
+		
+		for (bin_index = 0; bin_index < obj->frame_size/2+1; bin_index++){
+
+			printf("[%02u]-(%03u): (%+1.3f , %+1.3f)\n", pair_index, bin_index, obj->samples[pair_index][bin_index*2+0], obj->samples[pair_index][bin_index*2+1]);
+
+		}
+
+	}
+
+}
+
 corrs_obj * corrs_construct(const unsigned int channels_count) {
 
 	corrs_obj * obj;
@@ -149,6 +202,20 @@ void corrs_destroy(corrs_obj * obj) {
 
 }
 
+void corrs_printf(const corrs_obj * obj) {
+
+	unsigned int pair_index;
+
+	for (pair_index = 0; pair_index < (obj->channels_count * (obj->channels_count-1)/2); pair_index++) {
+
+		printf("[%02u] taus_prev=%+1.3f ys_prev=%+1.3f taus_max=%+1.3f ys_max=%+1.3f taus_next=%+1.3f ys_next=%+1.3f\n", 
+			pair_index, obj->taus_prev[pair_index], obj->ys_prev[pair_index], obj->taus_max[pair_index], obj->ys_max[pair_index], obj->taus_next[pair_index], obj->ys_next[pair_index]);
+
+	}
+
+}
+
+
 taus_obj * taus_construct(const unsigned int channels_count) {
 
 	taus_obj * obj;
@@ -172,5 +239,17 @@ void taus_destroy(taus_obj * obj) {
 	free((void *) obj->ys);
 
 	free((void *) obj);
+
+}
+
+void taus_printf(const taus_obj * obj) {
+
+	unsigned int pair_index;
+
+	for (pair_index = 0; pair_index < (obj->channels_count * (obj->channels_count - 1)/2); pair_index++) {
+
+		printf("[%02u] taus=%1.3f ys=%1.3f\n", pair_index, obj->taus[pair_index], obj->ys[pair_index]);
+
+	}
 
 }

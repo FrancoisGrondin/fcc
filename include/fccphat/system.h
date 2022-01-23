@@ -121,6 +121,15 @@
 
 	} quadinterp_obj;
 
+	typedef struct csv_obj {
+
+		FILE * file_pointer;
+
+		unsigned int channels_count;
+		unsigned int frame_index;
+
+	} csv_obj;
+
 	wav_obj * wav_construct(const char * file_name, const unsigned int hop_size);
 
 	void wav_destroy(wav_obj * obj);
@@ -156,5 +165,11 @@
 	void quadinterp_destroy(quadinterp_obj * obj);
 
 	int quadinterp_call(quadinterp_obj * obj, const corrs_obj * corrs, taus_obj * taus);
+
+	csv_obj * csv_construct(const char * file_name, const unsigned int channels_count);
+
+	void csv_destroy(csv_obj * obj);
+
+	int csv_write(csv_obj * obj, taus_obj * taus);
 
 #endif
