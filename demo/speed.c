@@ -11,8 +11,6 @@ int main(int argc, char * argv[]) {
     unsigned int repeat;
 
     stft_obj * stft;
-    //scm_obj * scm;
-    //phat_obj * phat;
     scmphat_obj * scmphat;
     gcc_obj * gcc;
     fcc_obj * fcc;
@@ -21,15 +19,14 @@ int main(int argc, char * argv[]) {
     hops_obj * hops;
     freqs_obj * freqs;
     covs_obj * covs;
-    //covs_obj * covs_normalized;
     corrs_obj * corrs;
     taus_obj * taus;
 
     const unsigned int hop_size = 256;
     const unsigned int frame_size = 512;
     const unsigned int tau_max = 8;
-    const unsigned int interpolation_rate = 2;
-    const float alpha = 1.0;
+    const unsigned int interpolation_rate = 1;
+    const float alpha = 0.1;
 
     unsigned int r;
     unsigned int channels_count;
