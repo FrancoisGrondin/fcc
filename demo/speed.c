@@ -25,7 +25,7 @@ int main(int argc, char * argv[]) {
     const unsigned int hop_size = 256;
     const unsigned int frame_size = 512;
     const unsigned int tau_max = 8;
-    const unsigned int interpolation_rate = 1;
+    const unsigned int interpolation_rate = 2;
     const float alpha = 0.1;
 
     unsigned int r;
