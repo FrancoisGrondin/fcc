@@ -748,6 +748,10 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
     unsigned int l_max;
     float y_max;
 
+    float current_z_real;
+    float current_z_imag;
+    float current_y_real;
+
     pair_index = 0;
 
     for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
@@ -781,9 +785,10 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
             x_sub_imag[obj->frame_size/4] = cov_imag1;
 
             // Compute the projection on each even base
+
             for (k = 0; k < obj->K; k += 2) {
-                float current_z_real = 0.f;
-                float current_z_imag = 0.f;
+                current_z_real = 0.f;
+                current_z_imag = 0.f;
 
                 for (n = 0; n < obj->frame_size/4+1; n++) {
                     current_z_real += x_add_real[n] * obj->bases[k][n];
@@ -795,9 +800,10 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
             }
 
             // Compute the projection on each odd base
+
             for (k = 1; k < obj->K; k += 2) {
-                float current_z_real = 0.f;
-                float current_z_imag = 0.f;
+                current_z_real = 0.f;
+                current_z_imag = 0.f;
 
                 for (n = 0; n < obj->frame_size/4+1; n++) {
                     z_real[k] += -x_sub_imag[n] * obj->bases[k][n];
@@ -811,7 +817,7 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
             // Using the vector z, compute the y value for each dictionary element
 
             for (l = 0; l < obj->L; l++) {
-                float current_y_real = 0.f;
+                current_y_real = 0.f;
                 for (k = 0; k < obj->K; k++) {
                     current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
                 }
@@ -820,7 +826,7 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
             // Find the maximum value and corresponding index
 
-            y_max = 0.0;
+            y_max = 0.f;
             l_max = 1;
 
             for (l = 1; l < obj->L-1; l++) {
