@@ -1,6 +1,6 @@
-// 
+//
 // Fast Cross-Correlation algorithm
-// 
+//
 // Author: Francois Grondin
 // Email: francois.grondin2@usherbrooke.ca
 //
@@ -83,7 +83,7 @@ void wav_destroy(wav_obj * obj) {
 // (return)             Returns -1 if the end of file reached, 0 otherwise
 //
 int wav_read(wav_obj * obj, hops_obj * hops) {
-    
+
     size_t rtn;
     unsigned int channel_index;
     unsigned int sample_index;
@@ -202,14 +202,14 @@ int stft_call(stft_obj * obj, const hops_obj * hops, freqs_obj * freqs) {
 
         //
         // Shift samples to the left:
-        // 
-        // The initial array 
-        // 
-        // |AAAAAAAAAAAAAA|BBBBBBBBBBBBBBBBBBBBBBBBBBB|
-        //  <--hop_size--> <--(frame_size-hop_size)--> 
         //
-        // becomes       
-        // 
+        // The initial array
+        //
+        // |AAAAAAAAAAAAAA|BBBBBBBBBBBBBBBBBBBBBBBBBBB|
+        //  <--hop_size--> <--(frame_size-hop_size)-->
+        //
+        // becomes
+        //
         // |BBBBBBBBBBBBBBBBBBBBBBBBBBB|00000000000000|
         //  <--(frame_size-hop_size)--> <--hop_size-->
         //
@@ -218,8 +218,8 @@ int stft_call(stft_obj * obj, const hops_obj * hops, freqs_obj * freqs) {
         //
         // Then fill the right side with new samples
         //
-        // So the array 
-        // 
+        // So the array
+        //
         // |BBBBBBBBBBBBBBBBBBBBBBBBBBB|00000000000000|
         //  <--(frame_size-hop_size)--> <--hop_size-->
         //
@@ -251,7 +251,7 @@ int stft_call(stft_obj * obj, const hops_obj * hops, freqs_obj * freqs) {
 
 }
 
-// 
+//
 // Construct the scmphat object
 //
 // channels_count       Number of channels
@@ -408,7 +408,7 @@ int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
                     src1_real = freqs->samples[channel_index1][bin_index*2+0];
                     src1_imag = freqs->samples[channel_index1][bin_index*2+1];
                     src2_real = freqs->samples[channel_index2][bin_index*2+0];
-                    src2_imag = freqs->samples[channel_index2][bin_index*2+1];                
+                    src2_imag = freqs->samples[channel_index2][bin_index*2+1];
 
                     dest_real *= (1.0 - obj->alpha);
                     dest_imag *= (1.0 - obj->alpha);
@@ -521,7 +521,7 @@ gcc_obj * gcc_construct(const unsigned int channels_count, const unsigned int fr
     // Allocate memory for FFTW
     obj->frame_complex = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex) * (frame_size/2+1) * interpolation_rate);
     obj->frame_real = (float *) fftwf_malloc(sizeof(float) * frame_size * interpolation_rate);
-    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_ESTIMATE);    
+    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_ESTIMATE);
 
     // Create frame to hold only relevant interval of TDoAs
     obj->cropped_values = (float *) malloc(sizeof(float) * (tau_max * 2 * interpolation_rate + 1));
@@ -531,7 +531,7 @@ gcc_obj * gcc_construct(const unsigned int channels_count, const unsigned int fr
 
 }
 
-// 
+//
 // Destroy the gcc object
 //
 // obj                  Pointer to the gcc object
@@ -585,7 +585,7 @@ int gcc_call(gcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
             for (bin_index = 0; bin_index < (obj->frame_size/2+1); bin_index++) {
 
                 obj->frame_complex[bin_index][0] = covs->samples[pair_index][bin_index*2+0];
-                obj->frame_complex[bin_index][1] = covs->samples[pair_index][bin_index*2+1];        
+                obj->frame_complex[bin_index][1] = covs->samples[pair_index][bin_index*2+1];
 
             }
 
@@ -608,7 +608,7 @@ int gcc_call(gcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
             // Save the maximum cross-correlation amplitude, and the corresponding TDoA
             // Also save the TDoA before the one with the max cross-correlation amplitude, and the one after
-            // (these will be needed later for quadratic interpolation)            
+            // (these will be needed later for quadratic interpolation)
             corrs->taus_prev[pair_index] = ((float) (max_index-1) - ((float) obj->tau_max * obj->interpolation_rate)) / ((float) obj->interpolation_rate);
             corrs->ys_prev[pair_index] = obj->cropped_values[max_index-1];
             corrs->taus_max[pair_index] = ((float) (max_index) - ((float) obj->tau_max * obj->interpolation_rate)) / ((float) obj->interpolation_rate);
@@ -627,7 +627,7 @@ int gcc_call(gcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
 }
 
-// 
+//
 // Construct the fcc object
 //
 // channels_count       Number of channels
@@ -748,6 +748,10 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
     unsigned int l_max;
     float y_max;
 
+    float current_z_real;
+    float current_z_imag;
+    float current_y_real;
+
     pair_index = 0;
 
     for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
@@ -780,42 +784,49 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
             x_sub_real[obj->frame_size/4] = cov_real1;
             x_sub_imag[obj->frame_size/4] = cov_imag1;
 
-            // Compute the projection on each base
+            // Compute the projection on each even base
 
-            for (k = 0; k < obj->K; k++) {
+            for (k = 0; k < obj->K; k += 2) {
+                current_z_real = 0.f;
+                current_z_imag = 0.f;
 
-                z_real[k] = 0.0;
-                z_imag[k] = 0.0;
-
-                // If the index is even, apply the equation with x_add and the even basis
-                if (k % 2 == 0) {
-                    for (n = 0; n < obj->frame_size/4+1; n++) {
-                        z_real[k] += x_add_real[n] * obj->bases[k][n];
-                        z_imag[k] += x_add_imag[n] * obj->bases[k][n];
-                    }
+                for (n = 0; n < obj->frame_size/4+1; n++) {
+                    current_z_real += x_add_real[n] * obj->bases[k][n];
+                    current_z_imag += x_add_imag[n] * obj->bases[k][n];
                 }
-                // If the index is odd, apply the equation with x_sub and the odd basis
-                else {
-                    for (n = 0; n < obj->frame_size/4+1; n++) {
-                        z_real[k] += -x_sub_imag[n] * obj->bases[k][n];
-                        z_imag[k] += x_sub_real[n] * obj->bases[k][n];
-                    }                    
-                }    
 
+                z_real[k] = current_z_real;
+                z_imag[k] = current_z_imag;
+            }
+
+            // Compute the projection on each odd base
+
+            for (k = 1; k < obj->K; k += 2) {
+                current_z_real = 0.f;
+                current_z_imag = 0.f;
+
+                for (n = 0; n < obj->frame_size/4+1; n++) {
+                    z_real[k] += -x_sub_imag[n] * obj->bases[k][n];
+                    z_imag[k] += x_sub_real[n] * obj->bases[k][n];
+                }
+
+                z_real[k] = current_z_real;
+                z_imag[k] = current_z_imag;
             }
 
             // Using the vector z, compute the y value for each dictionary element
 
             for (l = 0; l < obj->L; l++) {
-                y_real[l] = 0.0;
+                current_y_real = 0.f;
                 for (k = 0; k < obj->K; k++) {
-                    y_real[l] += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
+                    current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
                 }
+                y_real[l] = current_y_real;
             }
 
             // Find the maximum value and corresponding index
 
-            y_max = 0.0;
+            y_max = 0.f;
             l_max = 1;
 
             for (l = 1; l < obj->L-1; l++) {
@@ -823,7 +834,7 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
                     y_max = y_real[l];
                     l_max = l;
                 }
-            }    
+            }
 
             // Save the maximum cross-correlation amplitude, and the corresponding TDoA
             // Also save the TDoA before the one with the max cross-correlation amplitude, and the one after
@@ -892,11 +903,11 @@ void quadinterp_destroy(quadinterp_obj * obj) {
 // (return)             Returns 0 if no error
 //
 int quadinterp_call(quadinterp_obj * obj, const corrs_obj * corrs, taus_obj * taus) {
-    
+
     unsigned int channel_index1;
     unsigned int channel_index2;
     unsigned int pair_index;
-    
+
     float y_prev, y_max, y_next;
     float tau_max;
     float delta_tau;
@@ -927,7 +938,7 @@ int quadinterp_call(quadinterp_obj * obj, const corrs_obj * corrs, taus_obj * ta
 
     }
 
-    // By default return 0 when returns without error    
+    // By default return 0 when returns without error
     return 0;
 
 }
@@ -939,7 +950,7 @@ int quadinterp_call(quadinterp_obj * obj, const corrs_obj * corrs, taus_obj * ta
 // channels_count       Number of channels
 //
 // (return)             Pointer to the csv object
-// 
+//
 csv_obj * csv_construct(const char * file_name, const unsigned int channels_count) {
 
     csv_obj * obj;
@@ -953,7 +964,7 @@ csv_obj * csv_construct(const char * file_name, const unsigned int channels_coun
     // Create CSV file
     obj->file_pointer = fopen(file_name, "w");
 
-    // Copy relevant parameters    
+    // Copy relevant parameters
     obj->frame_index = 0;
     obj->channels_count = channels_count;
 
@@ -976,7 +987,7 @@ csv_obj * csv_construct(const char * file_name, const unsigned int channels_coun
         }
 
     }
-    
+
     fprintf(obj->file_pointer, "\n");
 
     // Return pointer to object
@@ -1033,7 +1044,7 @@ int csv_write(csv_obj * obj, taus_obj * taus) {
 
             if (pair_index != obj->channels_count * (obj->channels_count-1) / 2) {
                 fprintf(obj->file_pointer, ", ");
-            }            
+            }
 
         }
 
@@ -1041,7 +1052,7 @@ int csv_write(csv_obj * obj, taus_obj * taus) {
 
     fprintf(obj->file_pointer, "\n");
 
-    // By default return 0 when returns without error        
+    // By default return 0 when returns without error
     return 0;
 
 }

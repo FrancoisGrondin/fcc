@@ -35,10 +35,10 @@ int main(int argc, char * argv[]) {
     repeat = 0;
     channels_count = 2;
 
-    while((opt = getopt(argc, argv, "b:c:r:")) != -1) 
-    { 
-        switch(opt) 
-        { 
+    while((opt = getopt(argc, argv, "b:c:r:")) != -1)
+    {
+        switch(opt)
+        {
 
             case 'b':
 
@@ -58,8 +58,8 @@ int main(int argc, char * argv[]) {
                 repeat = atoi(optarg);
                 break;
 
-        } 
-    } 
+        }
+    }
 
     stft = stft_construct(channels_count, frame_size, hop_size);
     scmphat = scmphat_construct(channels_count, frame_size, alpha);
