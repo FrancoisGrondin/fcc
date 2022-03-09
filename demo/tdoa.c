@@ -35,11 +35,11 @@ int main(int argc, char * argv[]) {
 
     method = 0x00;
 
-    while((opt = getopt(argc, argv, "i:m:o:")) != -1) 
-    { 
-        switch(opt) 
-        { 
-            
+    while((opt = getopt(argc, argv, "i:m:o:")) != -1)
+    {
+        switch(opt)
+        {
+
             case 'i':
 
                 strcpy(wav_filename, optarg);
@@ -56,16 +56,11 @@ int main(int argc, char * argv[]) {
                 strcpy(csv_filename, optarg);
                 break;
 
-        } 
-    } 
+        }
+    }
 
     if (method == 0x00) {
         printf("Invalid method. Choose either \"fcc\" or \"gcc\"\n");
-        exit(-1);        
-    }
-
-    if( access(wav_filename, F_OK) != 0 ) {
-        printf("File %s does not exists\n", wav_filename);
         exit(-1);
     }
 
@@ -119,6 +114,8 @@ int main(int argc, char * argv[]) {
     covs_destroy(covs);
     corrs_destroy(corrs);
     taus_destroy(taus);
+
+    wav_destroy(wav);
 
     return 0;
 

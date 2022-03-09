@@ -31,9 +31,17 @@ wav_obj * wav_construct(const char * file_name, const unsigned int hop_size) {
 
     // Open the wave file to be read
     obj->file_pointer = fopen(file_name, "rb");
+    if (obj->file_pointer == NULL) {
+        printf("File %s does not exists\n", file_name);
+        exit(-1);
+    }
 
     // Load the first 44 bytes that are the header of the file
     rtn = fread(&hdr, sizeof(char), sizeof(wav_header), obj->file_pointer);
+    if (rtn != sizeof(wav_header)) {
+        printf("Invalid WAV file.\n");
+        exit(-1);
+    }
 
     // Copy relevant parameters
     obj->sample_rate = hdr.sample_rate;
@@ -144,7 +152,7 @@ stft_obj * stft_construct(const unsigned int channels_count, const unsigned int 
     // Allocate memory to perform the FFT using FFTW
     obj->frame_real = (float *) fftwf_malloc(sizeof(float) * frame_size);
     obj->frame_complex = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex) * (frame_size/2+1));
-    obj->fft = fftwf_plan_dft_r2c_1d(frame_size, obj->frame_real, obj->frame_complex, FFTW_ESTIMATE);
+    obj->fft = fftwf_plan_dft_r2c_1d(frame_size, obj->frame_real, obj->frame_complex, FFTW_EXHAUSTIVE);
 
     // Return the pointer to the stft object
     return obj;
@@ -521,7 +529,7 @@ gcc_obj * gcc_construct(const unsigned int channels_count, const unsigned int fr
     // Allocate memory for FFTW
     obj->frame_complex = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex) * (frame_size/2+1) * interpolation_rate);
     obj->frame_real = (float *) fftwf_malloc(sizeof(float) * frame_size * interpolation_rate);
-    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_ESTIMATE);
+    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_EXHAUSTIVE);
 
     // Create frame to hold only relevant interval of TDoAs
     obj->cropped_values = (float *) malloc(sizeof(float) * (tau_max * 2 * interpolation_rate + 1));

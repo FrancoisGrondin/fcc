@@ -1,6 +1,6 @@
-// 
+//
 // Fast Cross-Correlation algorithm
-// 
+//
 // Author: Francois Grondin
 // Email: francois.grondin2@usherbrooke.ca
 //
@@ -12,6 +12,12 @@
 
 #ifndef __FCCPHAT_SYSTEM
 #define __FCCPHAT_SYSTEM
+
+    #include "stdint.h"
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
 
     #include <stdlib.h>
     #include <stdio.h>
@@ -30,33 +36,33 @@
     typedef struct wav_header {
 
         // Chunk descriptor (corresponds to characters "RIFF")
-        char chunk_id[4];
+        int8_t chunk_id[4];
         // Size of the file in bytes - 8
-        unsigned int chunk_size;
+        int32_t chunk_size;
         // Contains the characters "WAVE"
-        char format[4];
+        int8_t format[4];
         // Contains the characters "fmt "
-        char subchunk1_id[4];
+        int8_t subchunk1_id[4];
         // Corresponds to 16 for PCM
-        unsigned int subchunk1_size;
+        int32_t subchunk1_size;
         // PCM = 1 for linear quantization
-        unsigned short audio_format;
+        int16_t audio_format;
         // Number of channels
-        unsigned short num_channels;
+        int16_t num_channels;
         // Sample rate in samples/sec
-        unsigned int sample_rate;
+        int32_t sample_rate;
         // Equals sample_rate * num_channels * bits_per_sample / 8
-        unsigned int byte_rate;
+        int32_t byte_rate;
         // Equals num_channels * bits_per_sample / 8
-        unsigned short block_align;
+        int16_t block_align;
         // Number of bits per sample
-        unsigned short bits_per_sample;
+        int16_t bits_per_sample;
         // Contains the characters "data"
-        char subchunk2_id[4];
+        int8_t subchunk2_id[4];
         // Equals num_samples * num_channels * bits_per_sample / 8
-        unsigned int subchunk2_size;
+        int32_t subchunk2_size;
 
-    } wav_header;
+    } __attribute__((packed)) wav_header;
 
     //
     // Wave object that handles reading a WAVE file
@@ -75,7 +81,7 @@
         // File pointer to read from the wave file
         FILE * file_pointer;
         // Buffer to load the samples (here we assume 16 bits per sample)
-        short * buffer;
+        int16_t * buffer;
 
     } wav_obj;
 
@@ -107,7 +113,7 @@
         // (size = frame_size/2+1)
         fftwf_complex * frame_complex;
 
-    } stft_obj;    
+    } stft_obj;
 
     //
     // Spatial Covariance Matrix object to estimate the cross-spectra and
@@ -117,10 +123,10 @@
 
         // Number of channels
         unsigned int channels_count;
-        // Number of samples in the time-domain prior to the STFT        
+        // Number of samples in the time-domain prior to the STFT
         unsigned int frame_size;
         // Smoothing parameter to average over time
-        // (alpha is between [0,1], and alpha=1 means no smoothing at all)        
+        // (alpha is between [0,1], and alpha=1 means no smoothing at all)
         float alpha;
         // Method to compute the result: if set to 'c', it will normalize each channel
         // before computing the cross-spectrum, and if set to 'p' it will compute the
@@ -159,7 +165,7 @@
         float * cropped_values;
 
     } gcc_obj;
-    
+
     //
     // Fast Cross-Correlation object to estimate the TDoA
     //
@@ -277,7 +283,7 @@
     //
     int stft_call(stft_obj * obj, const hops_obj * hops, freqs_obj * freqs);
 
-    // 
+    //
     // Construct the scmphat object
     //
     // channels_count       Number of channels
@@ -320,7 +326,7 @@
     //
     gcc_obj * gcc_construct(const unsigned int channels_count, const unsigned int frame_size, const unsigned int tau_max, const unsigned int interpolation_rate);
 
-    // 
+    //
     // Destroy the gcc object
     //
     // obj                  Pointer to the gcc object
@@ -340,7 +346,7 @@
     //
     int gcc_call(gcc_obj * obj, const covs_obj * covs, corrs_obj * corrs);
 
-    // 
+    //
     // Construct the fcc object
     //
     // channels_count       Number of channels
@@ -407,7 +413,7 @@
     // channels_count       Number of channels
     //
     // (return)             Pointer to the csv object
-    // 
+    //
     csv_obj * csv_construct(const char * file_name, const unsigned int channels_count);
 
     //
@@ -428,5 +434,9 @@
     // (return)             Returns 0 if no error
     //
     int csv_write(csv_obj * obj, taus_obj * taus);
+
+    #ifdef __cplusplus
+    }
+    #endif
 
 #endif
