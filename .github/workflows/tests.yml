@@ -22,9 +22,9 @@ jobs:
         submodules: recursive
 
     - name: Install ubuntu dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install cmake build-essential libfftw3-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install cmake build-essential libfftw3-dev
 
     - name: Create build directory
       run: |
