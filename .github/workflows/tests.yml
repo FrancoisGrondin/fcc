@@ -35,9 +35,9 @@ jobs:
       run: cmake .. -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
 
     - name: Build
-        working-directory: build
-        run: make
+      working-directory: build
+      run: make
 
     - name: Run fccphat_tests
-        working-directory: bin
-        run: ./fccphat_tests
+      working-directory: bin
+      run: ./fccphat_tests
