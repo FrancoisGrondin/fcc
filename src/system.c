@@ -766,7 +766,7 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
         for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
 
-            // Compute the vectors x_add et x_sub to be used with even and odd bases
+            // Compute the vectors x_add and x_sub to be used with even and odd bases
 
             for (n = 0; n < obj->frame_size/4; n++) {
 
@@ -814,8 +814,8 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
                 current_z_imag = 0.f;
 
                 for (n = 0; n < obj->frame_size/4+1; n++) {
-                    z_real[k] += -x_sub_imag[n] * obj->bases[k][n];
-                    z_imag[k] += x_sub_real[n] * obj->bases[k][n];
+                    current_z_real += -x_sub_imag[n] * obj->bases[k][n];
+                    current_z_imag += x_sub_real[n] * obj->bases[k][n];
                 }
 
                 z_real[k] = current_z_real;
