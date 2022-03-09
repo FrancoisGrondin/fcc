@@ -107,7 +107,7 @@ int wav_read(wav_obj * obj, hops_obj * hops) {
         }
     }
 
-    // If the number of elements read is consisten, return 0 (meaning there are still elements to read)
+    // If the number of elements read is consistent, return 0 (meaning there are still elements to read)
     // otherwise return -1, which means we've reached the end of the file
     return (rtn == obj->hop_size * obj->num_channels) ? 0:-1;
 
@@ -971,6 +971,10 @@ csv_obj * csv_construct(const char * file_name, const unsigned int channels_coun
 
     // Create CSV file
     obj->file_pointer = fopen(file_name, "w");
+    if (obj->file_pointer == NULL) {
+        printf("Unable to open file %s\n", file_name);
+        exit(-1);
+    }
 
     // Copy relevant parameters
     obj->frame_index = 0;
