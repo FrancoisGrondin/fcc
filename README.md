@@ -46,32 +46,8 @@ The TDoAs are computed with a sequence of 4 operations:
 3) fcc: Perform Fast Cross-Correlation
 4) qi: Compute quadratic interpolation
 
-To measure the execution time of the stft with two microphones for 1,000,000 iterations, we can run the following script:
+To measure the execution time of all operations with two microphones for 1,000,000 iterations, we can run the following command:
 
 ```
-time ./speed -b stft -c 2 -r 1000000
-```
-
-To measure the execution time of the scmphat with two microphones for 1,000,000 iterations, we can run the following script:
-
-```
-time ./speed -b scmphat -c 2 -r 1000000
-```
-
-To measure the execution time of the gcc with two microphones for 1,000,000 iterations, we can run the following script:
-
-```
-time ./speed -b gcc -c 2 -r 1000000
-```
-
-To measure the execution time of the fcc with two microphones for 1,000,000 iterations, we can run the following script:
-
-```
-time ./speed -b fcc -c 2 -r 1000000
-```
-
-To measure the execution time of the qi with two microphones for 1,000,000 iterations, we can run the following script:
-
-```
-time ./speed -b qi -c 2 -r 1000000
+./speed -c 2 -r 1000000
 ```
