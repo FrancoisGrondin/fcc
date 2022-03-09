@@ -1,4 +1,6 @@
 # FCC
+[![Actions Status](https://github.com/FrancoisGrondin/fcc/workflows/tests/badge.svg)](https://github.com/FrancoisGrondin/fcc/actions)
+
 Fast Cross-Correlation
 
 ## Compile the library
