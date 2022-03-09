@@ -16,28 +16,28 @@ jobs:
 
     runs-on: ${{matrix.os}}
 
-  steps:
-  - uses: actions/checkout@v2
-    with:
-      submodules: recursive
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
-  - name: Install ubuntu dependencies
-    run: |
-      sudo apt-get update
-      sudo apt-get install cmake build-essential libfftw3-dev
+      - name: Install ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install cmake build-essential libfftw3-dev
 
-  - name: Create build directory
-    run: |
-      mkdir build
+      - name: Create build directory
+        run: |
+          mkdir build
 
-  - name: Run CMake
-    working-directory: build
-    run: cmake .. -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+      - name: Run CMake
+        working-directory: build
+        run: cmake .. -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DFCC_ENABLE_TESTS=ON
 
-  - name: Build
-    working-directory: build
-    run: make
+      - name: Build
+        working-directory: build
+        run: make
 
-  - name: Run fccphat_tests
-    working-directory: bin
-    run: ./fccphat_tests
+      - name: Run fccphat_tests
+        working-directory: bin
+        run: ./fccphat_tests
