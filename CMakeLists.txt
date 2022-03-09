@@ -1,5 +1,6 @@
-project(GCCPHAT)
-cmake_minimum_required(VERSION 2.4.6)
+cmake_minimum_required(VERSION 3.0.0)
+
+project(fccphat)
 
 if(COMMAND cmake_policy)
   cmake_policy(SET CMP0003 NEW)
@@ -39,12 +40,19 @@ add_executable(tdoa
   demo/tdoa.c
 )
 target_link_libraries(tdoa
-    fccphat
+  fccphat
 )
 
 add_executable(speed
   demo/speed.c
 )
 target_link_libraries(speed
-    fccphat
+  fccphat
 )
+
+option(FCC_ENABLE_TESTS "Build tests" OFF)
+
+if (FCC_ENABLE_TESTS)
+  add_subdirectory(test)
+endif (FCC_ENABLE_TESTS)
+

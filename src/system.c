@@ -31,9 +31,17 @@ wav_obj * wav_construct(const char * file_name, const unsigned int hop_size) {
 
     // Open the wave file to be read
     obj->file_pointer = fopen(file_name, "rb");
+    if (obj->file_pointer == NULL) {
+        printf("File %s does not exists\n", file_name);
+        exit(-1);
+    }
 
     // Load the first 44 bytes that are the header of the file
     rtn = fread(&hdr, sizeof(char), sizeof(wav_header), obj->file_pointer);
+    if (rtn != sizeof(wav_header)) {
+        printf("Invalid WAV file.\n");
+        exit(-1);
+    }
 
     // Copy relevant parameters
     obj->sample_rate = hdr.sample_rate;
@@ -99,7 +107,7 @@ int wav_read(wav_obj * obj, hops_obj * hops) {
         }
     }
 
-    // If the number of elements read is consisten, return 0 (meaning there are still elements to read)
+    // If the number of elements read is consistent, return 0 (meaning there are still elements to read)
     // otherwise return -1, which means we've reached the end of the file
     return (rtn == obj->hop_size * obj->num_channels) ? 0:-1;
 
@@ -144,7 +152,7 @@ stft_obj * stft_construct(const unsigned int channels_count, const unsigned int 
     // Allocate memory to perform the FFT using FFTW
     obj->frame_real = (float *) fftwf_malloc(sizeof(float) * frame_size);
     obj->frame_complex = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex) * (frame_size/2+1));
-    obj->fft = fftwf_plan_dft_r2c_1d(frame_size, obj->frame_real, obj->frame_complex, FFTW_ESTIMATE);
+    obj->fft = fftwf_plan_dft_r2c_1d(frame_size, obj->frame_real, obj->frame_complex, FFTW_EXHAUSTIVE);
 
     // Return the pointer to the stft object
     return obj;
@@ -521,7 +529,7 @@ gcc_obj * gcc_construct(const unsigned int channels_count, const unsigned int fr
     // Allocate memory for FFTW
     obj->frame_complex = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex) * (frame_size/2+1) * interpolation_rate);
     obj->frame_real = (float *) fftwf_malloc(sizeof(float) * frame_size * interpolation_rate);
-    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_ESTIMATE);
+    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_EXHAUSTIVE);
 
     // Create frame to hold only relevant interval of TDoAs
     obj->cropped_values = (float *) malloc(sizeof(float) * (tau_max * 2 * interpolation_rate + 1));
@@ -758,7 +766,7 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
         for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
 
-            // Compute the vectors x_add et x_sub to be used with even and odd bases
+            // Compute the vectors x_add and x_sub to be used with even and odd bases
 
             for (n = 0; n < obj->frame_size/4; n++) {
 
@@ -806,8 +814,8 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
                 current_z_imag = 0.f;
 
                 for (n = 0; n < obj->frame_size/4+1; n++) {
-                    z_real[k] += -x_sub_imag[n] * obj->bases[k][n];
-                    z_imag[k] += x_sub_real[n] * obj->bases[k][n];
+                    current_z_real += -x_sub_imag[n] * obj->bases[k][n];
+                    current_z_imag += x_sub_real[n] * obj->bases[k][n];
                 }
 
                 z_real[k] = current_z_real;
@@ -963,6 +971,10 @@ csv_obj * csv_construct(const char * file_name, const unsigned int channels_coun
 
     // Create CSV file
     obj->file_pointer = fopen(file_name, "w");
+    if (obj->file_pointer == NULL) {
+        printf("Unable to open file %s\n", file_name);
+        exit(-1);
+    }
 
     // Copy relevant parameters
     obj->frame_index = 0;

@@ -1,6 +1,6 @@
-// 
+//
 // Fast Cross-Correlation algorithm
-// 
+//
 // Author: Francois Grondin
 // Email: francois.grondin2@usherbrooke.ca
 //
@@ -12,6 +12,10 @@
 
 #ifndef __FCCPHAT_SIGNAL
 #define __FCCPHAT_SIGNAL
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
 
     #include <stdlib.h>
     #include <string.h>
@@ -236,5 +240,10 @@
     // (return)                 None, but prints content in console
     //
     void taus_printf(const taus_obj * obj);
+
+
+    #ifdef __cplusplus
+    }
+    #endif
 
 #endif

@@ -3,11 +3,11 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 
 int main(int argc, char * argv[]) {
 
     int opt;
-    char step;
     unsigned int repeat;
 
     stft_obj * stft;
@@ -26,32 +26,30 @@ int main(int argc, char * argv[]) {
     const unsigned int frame_size = 512;
     const unsigned int tau_max = 8;
     const unsigned int interpolation_rate = 2;
-    const float alpha = 0.1;
+    const float alpha = 0.1f;
 
     unsigned int r;
     unsigned int channels_count;
 
-    step = 0;
+    clock_t start;
+    float stft_duration;
+    float scmphat_duration;
+    float gcc_duration;
+    float fcc_duration;
+    float quadinterp_duration;
+
     repeat = 0;
     channels_count = 2;
 
-    while((opt = getopt(argc, argv, "b:c:r:")) != -1)
+    while((opt = getopt(argc, argv, "c:r:")) != -1)
     {
         switch(opt)
         {
 
-            case 'b':
-
-                if (strcmp(optarg, "stft") == 0) { step = 1; }
-                if (strcmp(optarg, "scmphat") == 0) { step = 2; }
-                if (strcmp(optarg, "gcc") == 0) { step = 3; }
-                if (strcmp(optarg, "fcc") == 0) { step = 4; }
-                if (strcmp(optarg, "qi") == 0) { step = 5; }
-                break;
-
             case 'c':
 
                 channels_count = atoi(optarg);
+                break;
 
             case 'r':
 
@@ -73,15 +71,42 @@ int main(int argc, char * argv[]) {
     corrs = corrs_construct(channels_count);
     taus = taus_construct(channels_count);
 
+    start = clock();
     for (r = 0; r < repeat; r++) {
-
-        if (step == 1) { stft_call(stft, hops, freqs); }
-        if (step == 2) { scmphat_call(scmphat, freqs, covs); }
-        if (step == 3) { gcc_call(gcc, covs, corrs); }
-        if (step == 4) { fcc_call(fcc, covs, corrs); }
-        if (step == 5) { quadinterp_call(quadinterp, corrs, taus); }
-
+        stft_call(stft, hops, freqs);
     }
+    stft_duration = (float)(clock() - start) / CLOCKS_PER_SEC;
+
+    start = clock();
+    for (r = 0; r < repeat; r++) {
+        scmphat_call(scmphat, freqs, covs);
+    }
+    scmphat_duration = (float)(clock() - start) / CLOCKS_PER_SEC;
+
+    start = clock();
+    for (r = 0; r < repeat; r++) {
+        gcc_call(gcc, covs, corrs);
+    }
+    gcc_duration = (float)(clock() - start) / CLOCKS_PER_SEC;
+
+    start = clock();
+    for (r = 0; r < repeat; r++) {
+        fcc_call(fcc, covs, corrs);
+    }
+    fcc_duration = (float)(clock() - start) / CLOCKS_PER_SEC;
+
+    start = clock();
+    for (r = 0; r < repeat; r++) {
+        quadinterp_call(quadinterp, corrs, taus);
+    }
+    quadinterp_duration = (float)(clock() - start) / CLOCKS_PER_SEC;
+
+    printf("***** Duration *****\n");
+    printf("    stft:       %1.3f s\n", stft_duration);
+    printf("    scmphat:    %1.3f s\n", scmphat_duration);
+    printf("    gcc:        %1.3f s\n", gcc_duration);
+    printf("    fcc:        %1.3f s\n", fcc_duration);
+    printf("    quadinterp: %1.3f s\n\n", quadinterp_duration);
 
     stft_destroy(stft);
     scmphat_destroy(scmphat);
