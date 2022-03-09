@@ -1,8 +1,8 @@
 //
 // Fast Cross-Correlation algorithm
 //
-// Author: Francois Grondin
-// Email: francois.grondin2@usherbrooke.ca
+// Author: Marc-Antoine Maheux
+// Email: marc-antoine.maheux@usherbrooke.ca
 //
 // Refer to the following paper for details:
 //
