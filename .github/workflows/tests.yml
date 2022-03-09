@@ -32,7 +32,7 @@ jobs:
 
       - name: Run CMake
         working-directory: build
-        run: cmake .. -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+        run: cmake .. -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DFCC_ENABLE_TESTS=ON
 
       - name: Build
         working-directory: build
