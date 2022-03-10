@@ -675,26 +675,22 @@ fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int fr
     obj->L = FCCPHAT_L;
 
     // Load bases from constants
-    obj->bases = (float **) malloc(sizeof(float *) * obj->K);
-    for (k = 0; k < obj->K; k++) {
+    obj->bases_stride = frame_size/4+1;
 #ifdef FCCPHAT_USE_SIMD
-        obj->bases[k] = (float *) aligned_alloc(FLOAT_SIMD_ALIGNMENT, sizeof(float) * (frame_size/4+1));
+    obj->bases = (float *) aligned_alloc(FLOAT_SIMD_ALIGNMENT, sizeof(float) * obj->bases_stride * obj->K);
 #else
-        obj->bases[k] = (float *) malloc(sizeof(float) * (frame_size/4+1));
+    obj->bases = (float *) malloc(sizeof(float) * obj->bases_stride * obj->K);
 #endif
-        memcpy(obj->bases[k], &(FCCPHAT_BASES[k][0]), sizeof(float) * (frame_size/4+1));
-    }
+    memcpy(obj->bases, FCCPHAT_BASES, sizeof(float) * obj->bases_stride * obj->K);
 
     // Load dictionaries from constants
-    obj->dicts = (float **) malloc(sizeof(float *) * obj->L);
-    for (l = 0; l < obj->L; l++) {
+    obj->dicts_stride = obj->K * 2;
 #ifdef FCCPHAT_USE_SIMD
-        obj->dicts[l] = (float *) aligned_alloc(FLOAT_SIMD_ALIGNMENT, sizeof(float) * obj->K * 2);
+    obj->dicts = (float *) aligned_alloc(FLOAT_SIMD_ALIGNMENT, sizeof(float) * obj->dicts_stride * obj->L);
 #else
-        obj->dicts[l] = (float *) malloc(sizeof(float) * obj->K * 2);
+    obj->dicts = (float *) malloc(sizeof(float) * obj->K * 2 * obj->L);
 #endif
-        memcpy(obj->dicts[l], &(FCCPHAT_DICTS[l][0]), sizeof(float) * obj->K * 2);
-    }
+    memcpy(obj->dicts, &(FCCPHAT_DICTS[l][0]), sizeof(float) * obj->dicts_stride * obj->L);
 
     // Return pointer to the object
     return obj;
@@ -714,15 +710,9 @@ void fcc_destroy(fcc_obj * obj) {
     unsigned int l;
 
     // Deallocate memory for bases
-    for (k = 0; k < obj->K; k++) {
-        free((void *) obj->bases[k]);
-    }
     free((void *) obj->bases);
 
     // Deallocate memory for dictionaries
-    for (l = 0; l < obj->L; l++) {
-        free((void *) obj->dicts[l]);
-    }
     free((void *) obj->dicts);
 
     // Deallocate memory for object
@@ -730,7 +720,7 @@ void fcc_destroy(fcc_obj * obj) {
 
 }
 
-#ifdef FCCPHAT_USE_SIMD
+#ifdef FCCPHAT_USE_SIMDa
 
     //
     // Compute Fast Cross-Correlation
@@ -835,15 +825,16 @@ void fcc_destroy(fcc_obj * obj) {
                 x_sub_imag[obj->frame_size/4] = cov_imag1;
 
                 // Compute the projection on each even base
-                // The manual vectorization is not needed becuase the compiler do a good job
+                // The manual vectorization is not needed because the compiler do a good job
 
                 for (k = 0; k < obj->K; k += 2) {
                     current_z_real = 0.f;
                     current_z_imag = 0.f;
 
-                    for (n = 0; n < obj->frame_size/4+1; n++) {
-                        current_z_real += x_add_real[n] * obj->bases[k][n];
-                        current_z_imag += x_add_imag[n] * obj->bases[k][n];
+                    float* current_base = obj->bases + obj->bases_stride * k;
+                    for (n = 0; n < obj->bases_stride; n++) {
+                        current_z_real += x_add_real[n] * current_base[n];
+                        current_z_imag += x_add_imag[n] * current_base[n];
                     }
 
                     z_real[k] = current_z_real;
@@ -851,15 +842,16 @@ void fcc_destroy(fcc_obj * obj) {
                 }
 
                 // Compute the projection on each odd base
-                // The manual vectorization is not needed becuase the compiler do a good job
+                // The manual vectorization is not needed because the compiler do a good job
 
                 for (k = 1; k < obj->K; k += 2) {
                     current_z_real = 0.f;
                     current_z_imag = 0.f;
 
-                    for (n = 0; n < obj->frame_size/4+1; n++) {
-                        current_z_real += -x_sub_imag[n] * obj->bases[k][n];
-                        current_z_imag += x_sub_real[n] * obj->bases[k][n];
+                    float* current_base = obj->bases + obj->bases_stride * k;
+                    for (n = 0; n < obj->bases_stride; n++) {
+                        current_z_real += -x_sub_imag[n] * current_base[n];
+                        current_z_imag += x_sub_real[n] * current_base[n];
                     }
 
                     z_real[k] = current_z_real;
@@ -867,18 +859,19 @@ void fcc_destroy(fcc_obj * obj) {
                 }
 
                 // Using the vector z, compute the y value for each dictionary element
-                // The manual vectorization is not needed becuase the compiler do a good job
+                // The manual vectorization is not needed because the compiler do a good job
 
                 for (l = 0; l < obj->L; l++) {
                     current_y_real = 0.f;
+                    float* current_dict = obj->dicts + obj->dicts_stride * l;
                     for (k = 0; k < obj->K; k++) {
-                        current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
+                        current_y_real += z_real[k] * current_dict[2*k+0] - z_imag[k] * current_dict[2*k+1];
                     }
                     y_real[l] = current_y_real;
                 }
 
                 // Find the maximum value and corresponding index
-                // The manual vectorization is not needed becuase the compiler do a good job
+                // The manual vectorization is not needed because the compiler do a good job
 
                 y_max = 0.f;
                 l_max = 1;
@@ -990,9 +983,10 @@ void fcc_destroy(fcc_obj * obj) {
                     current_z_real = 0.f;
                     current_z_imag = 0.f;
 
-                    for (n = 0; n < obj->frame_size/4+1; n++) {
-                        current_z_real += x_add_real[n] * obj->bases[k][n];
-                        current_z_imag += x_add_imag[n] * obj->bases[k][n];
+                    float* current_base = obj->bases + obj->bases_stride * k;
+                    for (n = 0; n < obj->bases_stride; n++) {
+                        current_z_real += x_add_real[n] * current_base[n];
+                        current_z_imag += x_add_imag[n] * current_base[n];
                     }
 
                     z_real[k] = current_z_real;
@@ -1005,9 +999,10 @@ void fcc_destroy(fcc_obj * obj) {
                     current_z_real = 0.f;
                     current_z_imag = 0.f;
 
-                    for (n = 0; n < obj->frame_size/4+1; n++) {
-                        current_z_real += -x_sub_imag[n] * obj->bases[k][n];
-                        current_z_imag += x_sub_real[n] * obj->bases[k][n];
+                    float* current_base = obj->bases + obj->bases_stride * k;
+                    for (n = 0; n < obj->bases_stride; n++) {
+                        current_z_real += -x_sub_imag[n] * current_base[n];
+                        current_z_imag += x_sub_real[n] * current_base[n];
                     }
 
                     z_real[k] = current_z_real;
@@ -1018,8 +1013,9 @@ void fcc_destroy(fcc_obj * obj) {
 
                 for (l = 0; l < obj->L; l++) {
                     current_y_real = 0.f;
+                    float* current_dict = obj->dicts + obj->dicts_stride * l;
                     for (k = 0; k < obj->K; k++) {
-                        current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
+                        current_y_real += z_real[k] * current_dict[2*k+0] - z_imag[k] * current_dict[2*k+1];
                     }
                     y_real[l] = current_y_real;
                 }
