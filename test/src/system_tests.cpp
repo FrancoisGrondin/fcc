@@ -18,16 +18,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define EXPECT_EQ_ARRAY(val1, val2, size) do {         \
-        for (size_t i = 0; i < size; i++) {         \
+#define EXPECT_EQ_ARRAY(val1, val2, size) do {                    \
+        for (size_t i = 0; i < size; i++) {                       \
             EXPECT_EQ(val1[i], val2[i]) << "(index=" << i << ")"; \
-        }                                           \
+        }                                                         \
     } while(false)
 
-#define EXPECT_NEAR_ARRAY(val1, val2, size, abs_error) do { \
-        for (size_t i = 0; i < size; i++) {              \
-            EXPECT_NEAR(val1[i], val2[i], abs_error) << "(index=" << i << ")";    \
-        }                                                \
+#define EXPECT_NEAR_ARRAY(val1, val2, size, abs_error) do {                    \
+        for (size_t i = 0; i < size; i++) {                                    \
+            EXPECT_NEAR(val1[i], val2[i], abs_error) << "(index=" << i << ")"; \
+        }                                                                      \
     } while(false)
 
 #define EXPECT_C_STRING_EQ(val1, val2) EXPECT_EQ(strcmp(val1, val2), 0) << val1 << " vs " << val2

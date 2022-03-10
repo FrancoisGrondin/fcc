@@ -16,7 +16,15 @@ if(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE "Release")
 endif(NOT CMAKE_BUILD_TYPE)
 
-ADD_DEFINITIONS(-DUSE_SIMD)
+option(USE_SIMD "Use SIMD for fcc (the compiler must support vector extensions)" OFF)
+if (USE_SIMD)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    ADD_DEFINITIONS(-DFCCPHAT_USE_SIMD)
+  else()
+    message(FATAL_ERROR "The option USE_SIMD is not compatible with ${CMAKE_CXX_COMPILER_ID}")
+  endif()
+endif(USE_SIMD)
+
 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-march=native -Wall -ffast-math")
 
 set(EXECUTABLE_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")
@@ -51,7 +59,6 @@ target_link_libraries(speed
 )
 
 option(FCC_ENABLE_TESTS "Build tests" OFF)
-
 if (FCC_ENABLE_TESTS)
   add_subdirectory(test)
 endif (FCC_ENABLE_TESTS)

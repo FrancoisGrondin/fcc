@@ -11,6 +11,7 @@
 //
 
 #include <fccphat/signal.h>
+#include <fccphat/simd.h>
 
 //
 // Construct the hops object
@@ -195,7 +196,12 @@ covs_obj * covs_construct(const unsigned int channels_count, const unsigned int 
     obj->samples = (float **) malloc(sizeof(float *) * channels_count * (channels_count-1) / 2);
     for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
         for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
+#ifdef FCCPHAT_USE_SIMD
+            obj->samples[pair_index] = (float *) aligned_alloc(FLOAT_SIMD_ALIGNMENT, sizeof(float) * (frame_size/2+1) * 2);
+#else
             obj->samples[pair_index] = (float *) malloc(sizeof(float) * (frame_size/2+1) * 2);
+#endif
+
             memset(obj->samples[pair_index], 0x00, sizeof(float) * (frame_size/2+1) * 2);
             pair_index++;
         }

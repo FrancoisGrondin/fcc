@@ -11,6 +11,7 @@
 //
 
 #include <fccphat/system.h>
+#include <fccphat/simd.h>
 
 //
 // Construct the wave object
@@ -676,14 +677,22 @@ fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int fr
     // Load bases from constants
     obj->bases = (float **) malloc(sizeof(float *) * obj->K);
     for (k = 0; k < obj->K; k++) {
+#ifdef FCCPHAT_USE_SIMD
+        obj->bases[k] = (float *) aligned_alloc(FLOAT_SIMD_ALIGNMENT, sizeof(float) * (frame_size/4+1));
+#else
         obj->bases[k] = (float *) malloc(sizeof(float) * (frame_size/4+1));
+#endif
         memcpy(obj->bases[k], &(FCCPHAT_BASES[k][0]), sizeof(float) * (frame_size/4+1));
     }
 
     // Load dictionaries from constants
     obj->dicts = (float **) malloc(sizeof(float *) * obj->L);
     for (l = 0; l < obj->L; l++) {
+#ifdef FCCPHAT_USE_SIMD
+        obj->dicts[l] = (float *) aligned_alloc(FLOAT_SIMD_ALIGNMENT, sizeof(float) * obj->K * 2);
+#else
         obj->dicts[l] = (float *) malloc(sizeof(float) * obj->K * 2);
+#endif
         memcpy(obj->dicts[l], &(FCCPHAT_DICTS[l][0]), sizeof(float) * obj->K * 2);
     }
 
@@ -721,149 +730,334 @@ void fcc_destroy(fcc_obj * obj) {
 
 }
 
-//
-// Compute Fast Cross-Correlation
-//
-// obj                  Pointer to the fcc object
-// covs                 Pointer to the covs object that holds the SCM
-// corrs                Pointer to the corrs object with the cross-correlation in time-domain
-//
-// (return)             Returns 0 if no error
-//
-int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
+#ifdef FCCPHAT_USE_SIMD
 
-    unsigned int channel_index1;
-    unsigned int channel_index2;
-    unsigned int pair_index;
+    //
+    // Compute Fast Cross-Correlation
+    //
+    // obj                  Pointer to the fcc object
+    // covs                 Pointer to the covs object that holds the SCM
+    // corrs                Pointer to the corrs object with the cross-correlation in time-domain
+    //
+    // (return)             Returns 0 if no error
+    //
+    int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
-    float cov_real1;
-    float cov_imag1;
-    float cov_real2;
-    float cov_imag2;
+        unsigned int channel_index1;
+        unsigned int channel_index2;
+        unsigned int pair_index;
 
-    unsigned int n;
-    unsigned int k;
-    unsigned int l;
+        float cov_real1;
+        float cov_imag1;
 
-    float x_add_real[(FCCPHAT_N/4+1)];
-    float x_add_imag[(FCCPHAT_N/4+1)];
-    float x_sub_real[(FCCPHAT_N/4+1)];
-    float x_sub_imag[(FCCPHAT_N/4+1)];
-    float z_real[FCCPHAT_K];
-    float z_imag[FCCPHAT_K];
+        unsigned int n;
+        unsigned int k;
+        unsigned int l;
 
-    float y_real[FCCPHAT_L];
-    unsigned int l_max;
-    float y_max;
+        FLOAT_SIMD_ALIGNMENT_ATTRIBUTE float x_add_real[(FCCPHAT_N/4+1)];
+        FLOAT_SIMD_ALIGNMENT_ATTRIBUTE float x_add_imag[(FCCPHAT_N/4+1)];
+        FLOAT_SIMD_ALIGNMENT_ATTRIBUTE float x_sub_real[(FCCPHAT_N/4+1)];
+        FLOAT_SIMD_ALIGNMENT_ATTRIBUTE float x_sub_imag[(FCCPHAT_N/4+1)];
+        FLOAT_SIMD_ALIGNMENT_ATTRIBUTE float z_real[FCCPHAT_K];
+        FLOAT_SIMD_ALIGNMENT_ATTRIBUTE float z_imag[FCCPHAT_K];
 
-    float current_z_real;
-    float current_z_imag;
-    float current_y_real;
+        FLOAT_SIMD_ALIGNMENT_ATTRIBUTE float y_real[FCCPHAT_L];
+        unsigned int l_max;
+        float y_max;
 
-    pair_index = 0;
+        float_vector_union * samples_vec;
 
-    for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
+        float_vector_union * x_add_real_vec = (float_vector_union *) x_add_real;
+        float_vector_union * x_add_imag_vec = (float_vector_union *) x_add_imag;
+        float_vector_union * x_sub_real_vec = (float_vector_union *) x_sub_real;
+        float_vector_union * x_sub_imag_vec = (float_vector_union *) x_sub_imag;
 
-        for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
+        float_vector_union cov1_vec;
+        float_vector_union cov2_vec;
+        float_vector_union x_add_vec;
+        float_vector_union x_sub_vec;
 
-            // Compute the vectors x_add and x_sub to be used with even and odd bases
+        float current_z_real;
+        float current_z_imag;
+        float current_y_real;
 
-            for (n = 0; n < obj->frame_size/4; n++) {
+        if ((obj->frame_size % (8 * FLOAT8_SIZE)) != 0) {
+            printf("Unsupported frame size (it must be a multiple of 32).\n");
+            exit(-1);
+        }
 
-                cov_real1 = covs->samples[pair_index][2*n+0];
-                cov_imag1 = covs->samples[pair_index][2*n+1];
+        pair_index = 0;
 
-                cov_real2 = covs->samples[pair_index][2*(obj->frame_size/2-n)+0];
-                cov_imag2 = covs->samples[pair_index][2*(obj->frame_size/2-n)+1];
+        for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
 
-                x_add_real[n] = cov_real1 + cov_real2;
-                x_add_imag[n] = cov_imag1 + cov_imag2;
-                x_sub_real[n] = cov_real1 - cov_real2;
-                x_sub_imag[n] = cov_imag1 - cov_imag2;
+            for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
 
-            }
+                // Compute the vectors x_add and x_sub to be used with even and odd bases
 
-            cov_real1 = covs->samples[pair_index][2*obj->frame_size/4+0];
-            cov_imag1 = covs->samples[pair_index][2*obj->frame_size/4+1];
+                samples_vec = (float_vector_union * ) covs->samples[pair_index];
+                float tmp;
+                float last_cov_real = covs->samples[pair_index][obj->frame_size];
+                float last_cov_imag = covs->samples[pair_index][obj->frame_size + 1];
 
-            x_add_real[obj->frame_size/4] = cov_real1;
-            x_add_imag[obj->frame_size/4] = cov_imag1;
+                for (n = 0; n < obj->frame_size / (2 * FLOAT8_SIZE); n++) {
 
-            x_sub_real[obj->frame_size/4] = cov_real1;
-            x_sub_imag[obj->frame_size/4] = cov_imag1;
+                    cov1_vec = samples_vec[n];
+                    SHUFFLE_FLOAT8_T(cov1_vec.f8, cov1_vec.f8, 0, 2, 4, 6, 1, 3, 5, 7);
 
-            // Compute the projection on each even base
+                    cov2_vec = samples_vec[obj->frame_size / FLOAT8_SIZE - n - 1];
 
-            for (k = 0; k < obj->K; k += 2) {
-                current_z_real = 0.f;
-                current_z_imag = 0.f;
+                    tmp = cov2_vec.f8[0];
+                    cov2_vec.f8[0] = last_cov_real;
+                    last_cov_real = tmp;
 
-                for (n = 0; n < obj->frame_size/4+1; n++) {
-                    current_z_real += x_add_real[n] * obj->bases[k][n];
-                    current_z_imag += x_add_imag[n] * obj->bases[k][n];
+                    tmp = cov2_vec.f8[1];
+                    cov2_vec.f8[1] = last_cov_imag;
+                    last_cov_imag = tmp;
+
+                    SHUFFLE_FLOAT8_T(cov2_vec.f8, cov2_vec.f8, 0, 6, 4, 2, 1, 7, 5, 3);
+
+                    x_add_vec.f8 = cov1_vec.f8 + cov2_vec.f8;
+                    x_sub_vec.f8 = cov1_vec.f8 - cov2_vec.f8;
+
+                    x_add_real_vec[n/2].f4[n%2] = x_add_vec.f4[0];
+                    x_add_imag_vec[n/2].f4[n%2] = x_add_vec.f4[1];
+                    x_sub_real_vec[n/2].f4[n%2] = x_sub_vec.f4[0];
+                    x_sub_imag_vec[n/2].f4[n%2] = x_sub_vec.f4[1];
                 }
 
-                z_real[k] = current_z_real;
-                z_imag[k] = current_z_imag;
-            }
+                cov_real1 = covs->samples[pair_index][2*obj->frame_size/4+0];
+                cov_imag1 = covs->samples[pair_index][2*obj->frame_size/4+1];
 
-            // Compute the projection on each odd base
+                x_add_real[obj->frame_size/4] = cov_real1;
+                x_add_imag[obj->frame_size/4] = cov_imag1;
 
-            for (k = 1; k < obj->K; k += 2) {
-                current_z_real = 0.f;
-                current_z_imag = 0.f;
+                x_sub_real[obj->frame_size/4] = cov_real1;
+                x_sub_imag[obj->frame_size/4] = cov_imag1;
 
-                for (n = 0; n < obj->frame_size/4+1; n++) {
-                    current_z_real += -x_sub_imag[n] * obj->bases[k][n];
-                    current_z_imag += x_sub_real[n] * obj->bases[k][n];
+                // Compute the projection on each even base
+                // The manual vectorization is not needed becuase the compiler do a good job
+
+                for (k = 0; k < obj->K; k += 2) {
+                    current_z_real = 0.f;
+                    current_z_imag = 0.f;
+
+                    for (n = 0; n < obj->frame_size/4+1; n++) {
+                        current_z_real += x_add_real[n] * obj->bases[k][n];
+                        current_z_imag += x_add_imag[n] * obj->bases[k][n];
+                    }
+
+                    z_real[k] = current_z_real;
+                    z_imag[k] = current_z_imag;
                 }
 
-                z_real[k] = current_z_real;
-                z_imag[k] = current_z_imag;
-            }
+                // Compute the projection on each odd base
+                // The manual vectorization is not needed becuase the compiler do a good job
 
-            // Using the vector z, compute the y value for each dictionary element
+                for (k = 1; k < obj->K; k += 2) {
+                    current_z_real = 0.f;
+                    current_z_imag = 0.f;
 
-            for (l = 0; l < obj->L; l++) {
-                current_y_real = 0.f;
-                for (k = 0; k < obj->K; k++) {
-                    current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
+                    for (n = 0; n < obj->frame_size/4+1; n++) {
+                        current_z_real += -x_sub_imag[n] * obj->bases[k][n];
+                        current_z_imag += x_sub_real[n] * obj->bases[k][n];
+                    }
+
+                    z_real[k] = current_z_real;
+                    z_imag[k] = current_z_imag;
                 }
-                y_real[l] = current_y_real;
-            }
 
-            // Find the maximum value and corresponding index
+                // Using the vector z, compute the y value for each dictionary element
+                // The manual vectorization is not needed becuase the compiler do a good job
 
-            y_max = 0.f;
-            l_max = 1;
-
-            for (l = 1; l < obj->L-1; l++) {
-                if (y_real[l] > y_max) {
-                    y_max = y_real[l];
-                    l_max = l;
+                for (l = 0; l < obj->L; l++) {
+                    current_y_real = 0.f;
+                    for (k = 0; k < obj->K; k++) {
+                        current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
+                    }
+                    y_real[l] = current_y_real;
                 }
+
+                // Find the maximum value and corresponding index
+                // The manual vectorization is not needed becuase the compiler do a good job
+
+                y_max = 0.f;
+                l_max = 1;
+
+                for (l = 1; l < obj->L-1; l++) {
+                    if (y_real[l] > y_max) {
+                        y_max = y_real[l];
+                        l_max = l;
+                    }
+                }
+
+                // Save the maximum cross-correlation amplitude, and the corresponding TDoA
+                // Also save the TDoA before the one with the max cross-correlation amplitude, and the one after
+                // (these will be needed later for quadratic interpolation)
+                corrs->taus_prev[pair_index] = ((float) (l_max - 1) - (float) (2 * obj->tau_max)) / 2.0;
+                corrs->ys_prev[pair_index] = y_real[l_max - 1];
+                corrs->taus_max[pair_index] = ((float) l_max - (float) (2 * obj->tau_max)) / 2.0;
+                corrs->ys_max[pair_index] = y_real[l_max];
+                corrs->taus_next[pair_index] = ((float) (l_max + 1) - (float) (2* obj->tau_max)) / 2.0;
+                corrs->ys_next[pair_index] = y_real[l_max + 1];
+
+                pair_index++;
+
             }
-
-            // Save the maximum cross-correlation amplitude, and the corresponding TDoA
-            // Also save the TDoA before the one with the max cross-correlation amplitude, and the one after
-            // (these will be needed later for quadratic interpolation)
-            corrs->taus_prev[pair_index] = ((float) (l_max - 1) - (float) (2 * obj->tau_max)) / 2.0;
-            corrs->ys_prev[pair_index] = y_real[l_max - 1];
-            corrs->taus_max[pair_index] = ((float) l_max - (float) (2 * obj->tau_max)) / 2.0;
-            corrs->ys_max[pair_index] = y_real[l_max];
-            corrs->taus_next[pair_index] = ((float) (l_max + 1) - (float) (2* obj->tau_max)) / 2.0;
-            corrs->ys_next[pair_index] = y_real[l_max + 1];
-
-            pair_index++;
 
         }
 
+        // By default return 0 when returns without error
+        return 0;
+
     }
 
-    // By default return 0 when returns without error
-    return 0;
+#else
 
-}
+    //
+    // Compute Fast Cross-Correlation
+    //
+    // obj                  Pointer to the fcc object
+    // covs                 Pointer to the covs object that holds the SCM
+    // corrs                Pointer to the corrs object with the cross-correlation in time-domain
+    //
+    // (return)             Returns 0 if no error
+    //
+    int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
+
+        unsigned int channel_index1;
+        unsigned int channel_index2;
+        unsigned int pair_index;
+
+        float cov_real1;
+        float cov_imag1;
+        float cov_real2;
+        float cov_imag2;
+
+        unsigned int n;
+        unsigned int k;
+        unsigned int l;
+
+        float x_add_real[(FCCPHAT_N/4+1)];
+        float x_add_imag[(FCCPHAT_N/4+1)];
+        float x_sub_real[(FCCPHAT_N/4+1)];
+        float x_sub_imag[(FCCPHAT_N/4+1)];
+        float z_real[FCCPHAT_K];
+        float z_imag[FCCPHAT_K];
+
+        float y_real[FCCPHAT_L];
+        unsigned int l_max;
+        float y_max;
+
+        float current_z_real;
+        float current_z_imag;
+        float current_y_real;
+
+        pair_index = 0;
+
+        for (channel_index1 = 0; channel_index1 < obj->channels_count; channel_index1++) {
+
+            for (channel_index2 = (channel_index1+1); channel_index2 < obj->channels_count; channel_index2++) {
+
+                // Compute the vectors x_add and x_sub to be used with even and odd bases
+
+                for (n = 0; n < obj->frame_size/4; n++) {
+
+                    cov_real1 = covs->samples[pair_index][2*n+0];
+                    cov_imag1 = covs->samples[pair_index][2*n+1];
+
+                    cov_real2 = covs->samples[pair_index][2*(obj->frame_size/2-n)+0];
+                    cov_imag2 = covs->samples[pair_index][2*(obj->frame_size/2-n)+1];
+
+                    x_add_real[n] = cov_real1 + cov_real2;
+                    x_add_imag[n] = cov_imag1 + cov_imag2;
+                    x_sub_real[n] = cov_real1 - cov_real2;
+                    x_sub_imag[n] = cov_imag1 - cov_imag2;
+
+                }
+
+                cov_real1 = covs->samples[pair_index][2*obj->frame_size/4+0];
+                cov_imag1 = covs->samples[pair_index][2*obj->frame_size/4+1];
+
+                x_add_real[obj->frame_size/4] = cov_real1;
+                x_add_imag[obj->frame_size/4] = cov_imag1;
+
+                x_sub_real[obj->frame_size/4] = cov_real1;
+                x_sub_imag[obj->frame_size/4] = cov_imag1;
+
+                // Compute the projection on each even base
+
+                for (k = 0; k < obj->K; k += 2) {
+                    current_z_real = 0.f;
+                    current_z_imag = 0.f;
+
+                    for (n = 0; n < obj->frame_size/4+1; n++) {
+                        current_z_real += x_add_real[n] * obj->bases[k][n];
+                        current_z_imag += x_add_imag[n] * obj->bases[k][n];
+                    }
+
+                    z_real[k] = current_z_real;
+                    z_imag[k] = current_z_imag;
+                }
+
+                // Compute the projection on each odd base
+
+                for (k = 1; k < obj->K; k += 2) {
+                    current_z_real = 0.f;
+                    current_z_imag = 0.f;
+
+                    for (n = 0; n < obj->frame_size/4+1; n++) {
+                        current_z_real += -x_sub_imag[n] * obj->bases[k][n];
+                        current_z_imag += x_sub_real[n] * obj->bases[k][n];
+                    }
+
+                    z_real[k] = current_z_real;
+                    z_imag[k] = current_z_imag;
+                }
+
+                // Using the vector z, compute the y value for each dictionary element
+
+                for (l = 0; l < obj->L; l++) {
+                    current_y_real = 0.f;
+                    for (k = 0; k < obj->K; k++) {
+                        current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
+                    }
+                    y_real[l] = current_y_real;
+                }
+
+                // Find the maximum value and corresponding index
+
+                y_max = 0.f;
+                l_max = 1;
+
+                for (l = 1; l < obj->L-1; l++) {
+                    if (y_real[l] > y_max) {
+                        y_max = y_real[l];
+                        l_max = l;
+                    }
+                }
+
+                // Save the maximum cross-correlation amplitude, and the corresponding TDoA
+                // Also save the TDoA before the one with the max cross-correlation amplitude, and the one after
+                // (these will be needed later for quadratic interpolation)
+                corrs->taus_prev[pair_index] = ((float) (l_max - 1) - (float) (2 * obj->tau_max)) / 2.0;
+                corrs->ys_prev[pair_index] = y_real[l_max - 1];
+                corrs->taus_max[pair_index] = ((float) l_max - (float) (2 * obj->tau_max)) / 2.0;
+                corrs->ys_max[pair_index] = y_real[l_max];
+                corrs->taus_next[pair_index] = ((float) (l_max + 1) - (float) (2* obj->tau_max)) / 2.0;
+                corrs->ys_next[pair_index] = y_real[l_max + 1];
+
+                pair_index++;
+
+            }
+
+        }
+
+        // By default return 0 when returns without error
+        return 0;
+
+    }
+
+#endif
 
 //
 // Construct the quadinterp object
