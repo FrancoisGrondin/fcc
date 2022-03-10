@@ -720,7 +720,7 @@ void fcc_destroy(fcc_obj * obj) {
 
 }
 
-#ifdef FCCPHAT_USE_SIMDa
+#ifdef FCCPHAT_USE_SIMD
 
     //
     // Compute Fast Cross-Correlation
