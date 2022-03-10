@@ -648,8 +648,6 @@ int gcc_call(gcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int frame_size, const unsigned int tau_max) {
 
     fcc_obj * obj;
-    unsigned int k;
-    unsigned int l;
 
     // Allocate memory for object
     obj = (fcc_obj *) malloc(sizeof(fcc_obj));
@@ -690,7 +688,7 @@ fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int fr
 #else
     obj->dicts = (float *) malloc(sizeof(float) * obj->K * 2 * obj->L);
 #endif
-    memcpy(obj->dicts, &(FCCPHAT_DICTS[l][0]), sizeof(float) * obj->dicts_stride * obj->L);
+    memcpy(obj->dicts, FCCPHAT_DICTS, sizeof(float) * obj->dicts_stride * obj->L);
 
     // Return pointer to the object
     return obj;
@@ -705,9 +703,6 @@ fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int fr
 // (return)             None
 //
 void fcc_destroy(fcc_obj * obj) {
-
-    unsigned int k;
-    unsigned int l;
 
     // Deallocate memory for bases
     free((void *) obj->bases);
