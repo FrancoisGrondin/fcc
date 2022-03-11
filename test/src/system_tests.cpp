@@ -182,67 +182,67 @@ void test_processing(const char * wav_filename, char method, const float alpha, 
     wav_destroy(wav);
 }
 
-const float abs_error_taus = 0.15;
-const float expected_audio2_taus[] = {0.6f};
-const float expected_audio4_taus[] = {-2.2f, 1.3f, 0.7f, 3.5f, 2.9f, -0.6f};
-const float expected_audio8_taus[] = {0.2f, -5.4f, -3.1f, 4.7f, 0.4f, 0.9f, -2.5f, -5.6f, -3.3f, 4.5f, 0.2f, 0.7f, -2.7f, 2.3f, 10.1f, 5.8f, 6.3f, 2.9f, 7.8f, 3.5f, 4.0f, 0.6f, -4.3f, -3.8f, -7.2f, 0.5f, -2.9f, -3.4f};
+const float ABS_ERROR_TAUS = 0.15;
+const float EXPECTED_AUDIO2_TAUS[] = {0.6f};
+const float EXPECTED_AUDIO4_TAUS[] = {-2.2f, 1.3f, 0.7f, 3.5f, 2.9f, -0.6f};
+const float EXPECTED_AUDIO8_TAUS[] = {0.2f, -2.4f, -3.1f, 2.7f, 0.4f, 0.9f, -1.5f, -2.6f, -3.3f, 2.5f, 0.2f, 0.7f, -1.7f, -0.7f, 5.1f, 2.8f, 3.3f, 0.9f, 5.8f, 3.5f, 4.0f, 1.6f, -2.3f, -1.8f, -4.2f, 0.5f, -1.9f, -2.4f};
 
 TEST(system_tests, gcc_processing__alpha_0_1_audio_2__should_return_good_taus) {
     const float alpha = 0.1f;
-    test_processing("resources/audio2.wav", 'g', alpha, expected_audio2_taus, abs_error_taus);
+    test_processing("resources/audio2.wav", 'g', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, gcc_processing__alpha_0_1_audio_4__should_return_good_taus) {
     const float alpha = 0.1f;
-    test_processing("resources/audio4.wav", 'g', alpha, expected_audio4_taus, abs_error_taus);
+    test_processing("resources/audio4.wav", 'g', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, gcc_processing__alpha_0_1_audio_8__should_return_good_taus) {
     const float alpha = 0.1f;
-    test_processing("resources/audio8.wav", 'g', alpha, expected_audio8_taus, abs_error_taus);
+    test_processing("resources/audio8.wav", 'g', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, gcc_processing__alpha_1_audio_2__should_return_good_taus) {
     const float alpha = 1.f;
-    test_processing("resources/audio2.wav", 'g', alpha, expected_audio2_taus, abs_error_taus);
+    test_processing("resources/audio2.wav", 'g', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, gcc_processing__alpha_1_audio_4__should_return_good_taus) {
     const float alpha = 1.f;
-    test_processing("resources/audio4.wav", 'g', alpha, expected_audio4_taus, abs_error_taus);
+    test_processing("resources/audio4.wav", 'g', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, gcc_processing__alpha_1_audio_8__should_return_good_taus) {
     const float alpha = 1.f;
-    test_processing("resources/audio8.wav", 'g', alpha, expected_audio8_taus, abs_error_taus);
+    test_processing("resources/audio8.wav", 'g', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, fcc_processing__alpha_0_1_audio_2__should_return_good_taus) {
     const float alpha = 0.1f;
-    test_processing("resources/audio2.wav", 'f', alpha, expected_audio2_taus, abs_error_taus);
+    test_processing("resources/audio2.wav", 'f', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, fcc_processing__alpha_0_1_audio_4__should_return_good_taus) {
     const float alpha = 0.1f;
-    test_processing("resources/audio4.wav", 'f', alpha, expected_audio4_taus, abs_error_taus);
+    test_processing("resources/audio4.wav", 'f', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, fcc_processing__alpha_0_1_audio_8__should_return_good_taus) {
     const float alpha = 0.1f;
-    test_processing("resources/audio8.wav", 'f', alpha, expected_audio8_taus, abs_error_taus);
+    test_processing("resources/audio8.wav", 'f', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, fcc_processing__alpha_1_audio_2__should_return_good_taus) {
     const float alpha = 1.f;
-    test_processing("resources/audio2.wav", 'f', alpha, expected_audio2_taus, abs_error_taus);
+    test_processing("resources/audio2.wav", 'f', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, fcc_processing__alpha_1_audio_4__should_return_good_taus) {
     const float alpha = 1.f;
-    test_processing("resources/audio4.wav", 'f', alpha, expected_audio4_taus, abs_error_taus);
+    test_processing("resources/audio4.wav", 'f', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
 }
 
 TEST(system_tests, fcc_processing__alpha_1_audio_8__should_return_good_taus) {
     const float alpha = 1.f;
-    test_processing("resources/audio8.wav", 'f', alpha, expected_audio8_taus, abs_error_taus);
+    test_processing("resources/audio8.wav", 'f', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
 }
