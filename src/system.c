@@ -418,8 +418,8 @@ int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
                     src2_real = freqs->samples[channel_index2][bin_index*2+0];
                     src2_imag = freqs->samples[channel_index2][bin_index*2+1];
 
-                    dest_real *= (1.0 - obj->alpha);
-                    dest_imag *= (1.0 - obj->alpha);
+                    dest_real *= (1.f - obj->alpha);
+                    dest_imag *= (1.f - obj->alpha);
 
                     dest_real += obj->alpha * (src1_real * src2_real + src1_imag * src2_imag);
                     dest_imag += obj->alpha * (src1_imag * src2_real - src1_real * src2_imag);
@@ -429,8 +429,8 @@ int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
 
                     dest_magn = sqrtf(dest_real * dest_real + dest_imag * dest_imag);
 
-                    dest_real /= (dest_magn + 1e-10);
-                    dest_imag /= (dest_magn + 1e-10);
+                    dest_real /= (dest_magn + 1e-10f);
+                    dest_imag /= (dest_magn + 1e-10f);
 
                     covs->samples[pair_index][bin_index*2+0] = dest_real;
                     covs->samples[pair_index][bin_index*2+1] = dest_imag;
@@ -459,8 +459,8 @@ int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
                 src_imag = freqs->samples[channel_index][bin_index*2+1];
                 src_magn = sqrtf(src_real * src_real + src_imag * src_imag);
 
-                src_real /= (src_magn + 1e-10);
-                src_imag /= (src_imag + 1e-10);
+                src_real /= (src_magn + 1e-10f);
+                src_imag /= (src_magn + 1e-10f);
 
                 obj->cross_spectrum[channel_index][bin_index*2+0] = src_real;
                 obj->cross_spectrum[channel_index][bin_index*2+1] = src_imag;
@@ -647,8 +647,6 @@ int gcc_call(gcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int frame_size, const unsigned int tau_max) {
 
     fcc_obj * obj;
-    unsigned int k;
-    unsigned int l;
 
     // Allocate memory for object
     obj = (fcc_obj *) malloc(sizeof(fcc_obj));
@@ -674,18 +672,14 @@ fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int fr
     obj->L = FCCPHAT_L;
 
     // Load bases from constants
-    obj->bases = (float **) malloc(sizeof(float *) * obj->K);
-    for (k = 0; k < obj->K; k++) {
-        obj->bases[k] = (float *) malloc(sizeof(float) * (frame_size/4+1));
-        memcpy(obj->bases[k], &(FCCPHAT_BASES[k][0]), sizeof(float) * (frame_size/4+1));
-    }
+    obj->bases_stride = frame_size/4+1;
+    obj->bases = (float *) malloc(sizeof(float) * obj->bases_stride * obj->K);
+    memcpy(obj->bases, FCCPHAT_BASES, sizeof(float) * obj->bases_stride * obj->K);
 
     // Load dictionaries from constants
-    obj->dicts = (float **) malloc(sizeof(float *) * obj->L);
-    for (l = 0; l < obj->L; l++) {
-        obj->dicts[l] = (float *) malloc(sizeof(float) * obj->K * 2);
-        memcpy(obj->dicts[l], &(FCCPHAT_DICTS[l][0]), sizeof(float) * obj->K * 2);
-    }
+    obj->dicts_stride = obj->K * 2;
+    obj->dicts = (float *) malloc(sizeof(float) * obj->K * 2 * obj->L);
+    memcpy(obj->dicts, FCCPHAT_DICTS, sizeof(float) * obj->dicts_stride * obj->L);
 
     // Return pointer to the object
     return obj;
@@ -701,19 +695,10 @@ fcc_obj * fcc_construct(const unsigned int channels_count, const unsigned int fr
 //
 void fcc_destroy(fcc_obj * obj) {
 
-    unsigned int k;
-    unsigned int l;
-
     // Deallocate memory for bases
-    for (k = 0; k < obj->K; k++) {
-        free((void *) obj->bases[k]);
-    }
     free((void *) obj->bases);
 
     // Deallocate memory for dictionaries
-    for (l = 0; l < obj->L; l++) {
-        free((void *) obj->dicts[l]);
-    }
     free((void *) obj->dicts);
 
     // Deallocate memory for object
@@ -758,7 +743,9 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
     float current_z_real;
     float current_z_imag;
+    float * current_base;
     float current_y_real;
+    float * current_dict;
 
     pair_index = 0;
 
@@ -798,9 +785,10 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
                 current_z_real = 0.f;
                 current_z_imag = 0.f;
 
-                for (n = 0; n < obj->frame_size/4+1; n++) {
-                    current_z_real += x_add_real[n] * obj->bases[k][n];
-                    current_z_imag += x_add_imag[n] * obj->bases[k][n];
+                current_base = obj->bases + obj->bases_stride * k;
+                for (n = 0; n < obj->bases_stride; n++) {
+                    current_z_real += x_add_real[n] * current_base[n];
+                    current_z_imag += x_add_imag[n] * current_base[n];
                 }
 
                 z_real[k] = current_z_real;
@@ -813,9 +801,10 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
                 current_z_real = 0.f;
                 current_z_imag = 0.f;
 
-                for (n = 0; n < obj->frame_size/4+1; n++) {
-                    current_z_real += -x_sub_imag[n] * obj->bases[k][n];
-                    current_z_imag += x_sub_real[n] * obj->bases[k][n];
+                current_base = obj->bases + obj->bases_stride * k;
+                for (n = 0; n < obj->bases_stride; n++) {
+                    current_z_real += -x_sub_imag[n] * current_base[n];
+                    current_z_imag += x_sub_real[n] * current_base[n];
                 }
 
                 z_real[k] = current_z_real;
@@ -826,8 +815,9 @@ int fcc_call(fcc_obj * obj, const covs_obj * covs, corrs_obj * corrs) {
 
             for (l = 0; l < obj->L; l++) {
                 current_y_real = 0.f;
+                current_dict = obj->dicts + obj->dicts_stride * l;
                 for (k = 0; k < obj->K; k++) {
-                    current_y_real += z_real[k] * obj->dicts[l][2*k+0] - z_imag[k] * obj->dicts[l][2*k+1];
+                    current_y_real += z_real[k] * current_dict[2*k+0] - z_imag[k] * current_dict[2*k+1];
                 }
                 y_real[l] = current_y_real;
             }
