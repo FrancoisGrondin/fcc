@@ -32,7 +32,7 @@
 
 #define EXPECT_C_STRING_EQ(val1, val2) EXPECT_EQ(strcmp(val1, val2), 0) << val1 << " vs " << val2
 
-TEST(system_tests, wav_obj_should_be_able_to_read_a_wav_file) {
+TEST(system_tests, wav_obj__should_be_able_to_read_a_wav_file) {
     const char * wav_filename = "resources/test_wav_obj.wav";
     const unsigned int hop_size = 3;
 
@@ -72,7 +72,7 @@ TEST(system_tests, wav_obj_should_be_able_to_read_a_wav_file) {
     wav_destroy(wav);
 }
 
-TEST(system_tests, csv_obj_should_be_able_to_write_taus) {
+TEST(system_tests, csv_obj__should_be_able_to_write_taus) {
     const unsigned int channels_count = 3;
     const char * csv_filename = "tmp.csv";
     const unsigned int max_line_length = 1024;
@@ -107,4 +107,142 @@ TEST(system_tests, csv_obj_should_be_able_to_write_taus) {
     EXPECT_EQ(fgets(csv_line, max_line_length, csv_file_pointer), nullptr);
 
     fclose(csv_file_pointer);
+}
+
+void test_processing(const char * wav_filename, char method, const float alpha, const float * expected_taus, const float abs_error_taus) {
+    wav_obj * wav;
+    stft_obj * stft;
+    scmphat_obj * scmphat;
+    gcc_obj * gcc;
+    fcc_obj * fcc;
+    quadinterp_obj * quadinterp;
+
+    hops_obj * hops;
+    freqs_obj * freqs;
+    covs_obj * covs;
+    corrs_obj * corrs;
+    taus_obj * taus;
+
+    const unsigned int hop_size = 256;
+    const unsigned int frame_size = 512;
+    const unsigned int sample_rate = 16000;
+    const unsigned int tau_max = 8;
+    const unsigned int interpolation_rate = 1;
+
+    wav = wav_construct(wav_filename, hop_size);
+
+    if (wav->sample_rate != sample_rate) {
+        wav_destroy(wav);
+
+        ADD_FAILURE() << "Invalid sample rate (was expecting " << sample_rate << ", got " << wav->sample_rate << ").\n";
+        return;
+    }
+
+    stft = stft_construct(wav->num_channels, frame_size, hop_size);
+    scmphat = scmphat_construct(wav->num_channels, frame_size, alpha);
+    gcc = gcc_construct(wav->num_channels, frame_size, tau_max, interpolation_rate);
+    fcc = fcc_construct(wav->num_channels, frame_size, tau_max);
+    quadinterp = quadinterp_construct(wav->num_channels);
+
+    hops = hops_construct(wav->num_channels, hop_size);
+    freqs = freqs_construct(wav->num_channels, frame_size);
+    covs = covs_construct(wav->num_channels, frame_size);
+    corrs = corrs_construct(wav->num_channels);
+    taus = taus_construct(wav->num_channels);
+
+    while (wav_read(wav, hops) == 0) {
+
+        stft_call(stft, hops, freqs);
+        scmphat_call(scmphat, freqs, covs);
+
+        if (method == 'g') {
+            gcc_call(gcc, covs, corrs);
+        }
+        if (method == 'f') {
+            fcc_call(fcc, covs, corrs);
+        }
+
+        quadinterp_call(quadinterp, corrs, taus);
+
+        EXPECT_NEAR_ARRAY(taus->taus, expected_taus, wav->num_channels * (wav->num_channels-1) / 2, abs_error_taus);
+    }
+
+    stft_destroy(stft);
+    scmphat_destroy(scmphat);
+    gcc_destroy(gcc);
+    fcc_destroy(fcc);
+    quadinterp_destroy(quadinterp);
+
+    hops_destroy(hops);
+    freqs_destroy(freqs);
+    covs_destroy(covs);
+    corrs_destroy(corrs);
+    taus_destroy(taus);
+
+    wav_destroy(wav);
+}
+
+const float ABS_ERROR_TAUS = 0.15;
+const float EXPECTED_AUDIO2_TAUS[] = {0.6f};
+const float EXPECTED_AUDIO4_TAUS[] = {-2.2f, 1.3f, 0.7f, 3.5f, 2.9f, -0.6f};
+const float EXPECTED_AUDIO8_TAUS[] = {0.2f, -2.4f, -3.1f, 2.7f, 0.4f, 0.9f, -1.5f, -2.6f, -3.3f, 2.5f, 0.2f, 0.7f, -1.7f, -0.7f, 5.1f, 2.8f, 3.3f, 0.9f, 5.8f, 3.5f, 4.0f, 1.6f, -2.3f, -1.8f, -4.2f, 0.5f, -1.9f, -2.4f};
+
+TEST(system_tests, gcc_processing__alpha_0_1_audio_2__should_return_good_taus) {
+    const float alpha = 0.1f;
+    test_processing("resources/audio2.wav", 'g', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, gcc_processing__alpha_0_1_audio_4__should_return_good_taus) {
+    const float alpha = 0.1f;
+    test_processing("resources/audio4.wav", 'g', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, gcc_processing__alpha_0_1_audio_8__should_return_good_taus) {
+    const float alpha = 0.1f;
+    test_processing("resources/audio8.wav", 'g', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, gcc_processing__alpha_1_audio_2__should_return_good_taus) {
+    const float alpha = 1.f;
+    test_processing("resources/audio2.wav", 'g', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, gcc_processing__alpha_1_audio_4__should_return_good_taus) {
+    const float alpha = 1.f;
+    test_processing("resources/audio4.wav", 'g', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, gcc_processing__alpha_1_audio_8__should_return_good_taus) {
+    const float alpha = 1.f;
+    test_processing("resources/audio8.wav", 'g', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, fcc_processing__alpha_0_1_audio_2__should_return_good_taus) {
+    const float alpha = 0.1f;
+    test_processing("resources/audio2.wav", 'f', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, fcc_processing__alpha_0_1_audio_4__should_return_good_taus) {
+    const float alpha = 0.1f;
+    test_processing("resources/audio4.wav", 'f', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, fcc_processing__alpha_0_1_audio_8__should_return_good_taus) {
+    const float alpha = 0.1f;
+    test_processing("resources/audio8.wav", 'f', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, fcc_processing__alpha_1_audio_2__should_return_good_taus) {
+    const float alpha = 1.f;
+    test_processing("resources/audio2.wav", 'f', alpha, EXPECTED_AUDIO2_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, fcc_processing__alpha_1_audio_4__should_return_good_taus) {
+    const float alpha = 1.f;
+    test_processing("resources/audio4.wav", 'f', alpha, EXPECTED_AUDIO4_TAUS, ABS_ERROR_TAUS);
+}
+
+TEST(system_tests, fcc_processing__alpha_1_audio_8__should_return_good_taus) {
+    const float alpha = 1.f;
+    test_processing("resources/audio8.wav", 'f', alpha, EXPECTED_AUDIO8_TAUS, ABS_ERROR_TAUS);
 }

@@ -183,9 +183,13 @@
         // Number of TDoA candidates
         unsigned int L;
         // Array of bases
-        float ** bases;
+        float * bases;
+        // The number of values between bases rows
+        unsigned int bases_stride;
         // Array of keys for each TDoA
-        float ** dicts;
+        float * dicts;
+        // The number of values between dicts rows
+        unsigned int dicts_stride;
 
         // This array holds the folded values with addition
         float * x_add;
