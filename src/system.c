@@ -152,7 +152,7 @@ stft_obj * stft_construct(const unsigned int channels_count, const unsigned int 
     // Allocate memory to perform the FFT using FFTW
     obj->frame_real = (float *) fftwf_malloc(sizeof(float) * frame_size);
     obj->frame_complex = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex) * (frame_size/2+1));
-    obj->fft = fftwf_plan_dft_r2c_1d(frame_size, obj->frame_real, obj->frame_complex, FFTW_EXHAUSTIVE);
+    obj->fft = fftwf_plan_dft_r2c_1d(frame_size, obj->frame_real, obj->frame_complex, FFTW_ESTIMATE);
 
     // Return the pointer to the stft object
     return obj;
@@ -529,7 +529,7 @@ gcc_obj * gcc_construct(const unsigned int channels_count, const unsigned int fr
     // Allocate memory for FFTW
     obj->frame_complex = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex) * (frame_size/2+1) * interpolation_rate);
     obj->frame_real = (float *) fftwf_malloc(sizeof(float) * frame_size * interpolation_rate);
-    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_EXHAUSTIVE);
+    obj->ifft = fftwf_plan_dft_c2r_1d(frame_size * interpolation_rate, obj->frame_complex, obj->frame_real, FFTW_ESTIMATE);
 
     // Create frame to hold only relevant interval of TDoAs
     obj->cropped_values = (float *) malloc(sizeof(float) * (tau_max * 2 * interpolation_rate + 1));
