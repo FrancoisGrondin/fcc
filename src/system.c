@@ -460,7 +460,7 @@ int scmphat_call(scmphat_obj * obj, const freqs_obj * freqs, covs_obj * covs) {
                 src_magn = sqrtf(src_real * src_real + src_imag * src_imag);
 
                 src_real /= (src_magn + 1e-10);
-                src_imag /= (src_imag + 1e-10);
+                src_imag /= (src_magn + 1e-10);
 
                 obj->cross_spectrum[channel_index][bin_index*2+0] = src_real;
                 obj->cross_spectrum[channel_index][bin_index*2+1] = src_imag;
